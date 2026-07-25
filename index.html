@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>元首办公室 — 钢铁雄心4 第一人称文本版</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+  <header id="top-bar">
+    <div id="time-controls">
+      <button id="btn-pause" title="暂停/继续" aria-label="暂停">⏸</button>
+      <button id="btn-speed-1" class="speed-btn active" data-speed="1" title="常速">▶</button>
+      <button id="btn-speed-3" class="speed-btn" data-speed="3" title="快速">▶▶</button>
+      <button id="btn-speed-5" class="speed-btn" data-speed="5" title="最快">▶▶▶</button>
+    </div>
+    <div id="date-display">1936年1月1日</div>
+    <div id="status-bar">
+      <span>稳定 <span id="stability">75</span></span>
+      <span>紧张度 <span id="tension">12</span>%</span>
+    </div>
+  </header>
+
+  <main id="game-area">
+    <section id="text-stream" aria-live="polite">
+      <p class="narrative">游戏加载中……</p>
+      <p class="sys">[SYS] 元首办公室 v0.1 — 设计文档见 docs/GAME_SCRIPT_OUTLINE.md</p>
+    </section>
+
+    <aside id="notebook">
+      <div class="notebook-grid">
+        <button class="notebook-cell" data-type="focus" title="国策">
+          <span class="cell-label">国策</span>
+          <span class="cell-preview" id="cell-focus">—</span>
+        </button>
+        <button class="notebook-cell" data-type="diplomacy" title="外交">
+          <span class="cell-label">外交</span>
+          <span class="cell-preview" id="cell-diplomacy">—</span>
+        </button>
+        <button class="notebook-cell" data-type="intel" title="情报">
+          <span class="cell-label">情报</span>
+          <span class="cell-preview" id="cell-intel">—</span>
+        </button>
+        <button class="notebook-cell" data-type="memo" title="备忘">
+          <span class="cell-label">备忘</span>
+          <span class="cell-preview" id="cell-memo">点击编辑</span>
+        </button>
+      </div>
+      <div id="notebook-detail" hidden></div>
+    </aside>
+  </main>
+
+  <footer id="event-prompt" hidden>
+    <div id="event-text"></div>
+    <div id="event-choices"></div>
+  </footer>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
