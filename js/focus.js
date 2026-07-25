@@ -128,11 +128,16 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
           <div class="focus-active-meta">${state.focusProgress}/${def.days} 日</div>
         `;
       }
+      const dock = document.getElementById('dock-focus-preview');
+      if (dock) dock.textContent = `国策：${def.name} ${state.focusProgress}/${def.days}`;
       listEl.innerHTML = '';
       return;
     }
 
     if (progressEl) progressEl.hidden = true;
+
+    const dock = document.getElementById('dock-focus-preview');
+    if (dock && !state.focusActive) dock.textContent = '国策：点击选择';
 
     const available = getAvailable();
     listEl.innerHTML = available.map((fid) => {

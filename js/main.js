@@ -3,11 +3,11 @@ import { createDayCycle } from './dayCycle.js';
 import { createOutput } from './consoleOutput.js';
 import { createEventUI } from './events.js';
 import { createFocusSystem } from './focus.js';
-import { createMap } from './map.js';
 import { createNotebook } from './notebook.js';
 import { createStorySystem } from './story.js';
 import { createAIScript } from './ai.js';
 import { createActionSystem } from './actions.js';
+import { createShell, createNotifications } from './shell.js';
 import { createInitialState, formatDateCN, LOCATION_NAMES } from './state.js';
 
 const state = createInitialState();
@@ -15,6 +15,7 @@ const state = createInitialState();
 const els = {
   textStream: document.getElementById('text-stream'),
   dateDisplay: document.getElementById('date-display'),
+  homeDate: document.getElementById('home-date'),
   btnPause: document.getElementById('btn-pause'),
   stability: document.getElementById('stability'),
   tension: document.getElementById('tension'),
@@ -24,15 +25,22 @@ const els = {
   eventPrompt: document.getElementById('event-prompt'),
   eventText: document.getElementById('event-text'),
   eventChoices: document.getElementById('event-choices'),
-  strategicMap: document.getElementById('strategic-map'),
-  mapInfo: document.getElementById('map-info'),
 };
 
-const output = createOutput(els.textStream);
+const notifications = createNotifications({
+  listEl: document.getElementById('notif-list'),
+  badgeEl: document.getElementById('notif-badge'),
+});
+
+const output = createOutput(els.textStream, (text, type) => notifications.add(text, type));
 const notebook = createNotebook();
+const shell = createShell();
 
 function updateHUD() {
-  els.dateDisplay.textContent = formatDateCN(state.date);
+  const cn = formatDateCN(state.date);
+  const short = cn.replace('年', '/').replace('月', '/').replace('日', '');
+  els.dateDisplay.textContent = short;
+  if (els.homeDate) els.homeDate.textContent = cn;
   els.stability.textContent = state.stability;
   els.tension.textContent = state.tension;
   els.warSupport.textContent = state.warSupport;
@@ -49,8 +57,6 @@ function setPaused(paused) {
   if (!paused) lastTick = performance.now();
 }
 
-const map = createMap({ svgEl: els.strategicMap, infoEl: els.mapInfo, state });
-
 const eventUI = createEventUI({
   promptEl: els.eventPrompt,
   textEl: els.eventText,
@@ -61,7 +67,6 @@ const eventUI = createEventUI({
   onResume: () => setPaused(false),
   onChoiceComplete: () => {
     updateHUD();
-    map.render();
     focusSystem.renderPanel();
   },
 });
@@ -71,7 +76,6 @@ const storySystem = createStorySystem({
   output,
   notebook,
   eventUI,
-  onMapUpdate: () => map.render(),
   onHUDUpdate: updateHUD,
 });
 
@@ -79,7 +83,7 @@ const focusSystem = createFocusSystem({
   state,
   output,
   notebook,
-  onMapUpdate: () => map.render(),
+  onMapUpdate: () => {},
   onHUDUpdate: updateHUD,
   eventUI,
   storySystem,
@@ -134,11 +138,11 @@ function showOpening() {
     '我醒来时，窗外柏林的天空是铅灰色的。',
     '新年。1936年。帝国在等我做出选择。',
   ]);
-  output.append('[SYS] 稳定75 | 战争支持30 | 点击侧栏国策/主动行事推进局势', 'sys');
+  output.append('[SYS] 点击上方应用操作；讯息在下方滚动', 'sys');
   notebook.add('diplomacy', '法国:-40 奥地利:55', '1936-01-01');
 }
 
-notebook.bindCells();
+notebook.bindSubMenus();
 actions.bind();
 focusSystem.renderPanel();
 updateHUD();

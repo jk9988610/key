@@ -1,11 +1,13 @@
 const MAX_ENTRIES = 20;
 
+const LOG_IDS = {
+  focus: 'notebook-focus-log',
+  diplomacy: 'notebook-diplomacy-log',
+  intel: 'notebook-intel-log',
+};
+
 export function createNotebook() {
-  const data = {
-    focus: [],
-    diplomacy: [],
-    intel: [],
-  };
+  const data = { focus: [], diplomacy: [], intel: [] };
 
   const previews = {
     focus: document.getElementById('cell-focus'),
@@ -13,9 +15,16 @@ export function createNotebook() {
     intel: document.getElementById('cell-intel'),
   };
 
-  const detail = document.getElementById('notebook-detail');
-  const detailTitle = document.getElementById('notebook-detail-title');
-  const detailBody = document.getElementById('notebook-detail-body');
+  function renderLog(type) {
+    const el = document.getElementById(LOG_IDS[type]);
+    if (!el) return;
+    const items = data[type];
+    if (!items.length) {
+      el.innerHTML = '<p class="notebook-empty">（暂无记录）</p>';
+      return;
+    }
+    el.innerHTML = items.map((e) => `<p class="notebook-entry">${escapeHtml(e)}</p>`).join('');
+  }
 
   function add(type, text, dateStr) {
     if (!data[type]) return;
@@ -23,32 +32,26 @@ export function createNotebook() {
     data[type].unshift(entry);
     if (data[type].length > MAX_ENTRIES) data[type].pop();
     if (previews[type]) previews[type].textContent = text;
+    renderLog(type);
+    if (type === 'focus') updateDock(text);
   }
 
-  function renderDetail(type) {
-    const labels = { focus: '国策', diplomacy: '外交', intel: '情报' };
-    if (detailTitle) detailTitle.textContent = labels[type] || type;
-    const items = data[type];
-    if (!items.length) {
-      detailBody.innerHTML = '<p class="notebook-empty">（暂无记录）</p>';
-      return;
-    }
-    detailBody.innerHTML = items.map((e) => `<p class="notebook-entry">${escapeHtml(e)}</p>`).join('');
+  function updateDock(text) {
+    const dock = document.getElementById('dock-focus-preview');
+    if (dock) dock.textContent = `国策：${text}`;
   }
 
-  function bindCells() {
-    document.querySelectorAll('.notebook-cell').forEach((cell) => {
-      cell.addEventListener('click', () => {
-        const type = cell.dataset.type;
-        document.querySelectorAll('.notebook-cell').forEach((c) => c.classList.remove('active'));
-        cell.classList.add('active');
-        detail.hidden = false;
-        renderDetail(type);
+  function bindSubMenus() {
+    document.querySelectorAll('[data-sub-open]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const map = { 'focus-log': 'focus', 'dip-log': 'diplomacy', 'intel-log': 'intel' };
+        const type = map[btn.dataset.subOpen];
+        if (type) renderLog(type);
       });
     });
   }
 
-  return { add, bindCells, data };
+  return { add, bindSubMenus, renderLog, data };
 }
 
 function escapeHtml(s) {

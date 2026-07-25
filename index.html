@@ -2,82 +2,169 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>元首办公室 — 钢铁雄心4 第一人称文本版</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>元首办公室</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div id="app">
-    <header id="top-bar">
-      <div class="bar-row bar-controls">
-        <div id="time-controls">
-          <button id="btn-pause" class="ctl-btn" title="暂停/继续" aria-label="暂停">⏸</button>
-          <button id="btn-speed-1" class="ctl-btn speed-btn active" data-speed="1" title="常速">1×</button>
-          <button id="btn-speed-3" class="ctl-btn speed-btn" data-speed="3" title="快速">3×</button>
-          <button id="btn-speed-5" class="ctl-btn speed-btn" data-speed="5" title="最快">5×</button>
-        </div>
-        <time id="date-display">1936年1月1日</time>
+  <div id="phone-frame">
+    <!-- 状态栏（类手机） -->
+    <header id="status-bar">
+      <div class="status-left">
+        <button type="button" id="btn-pause" class="status-icon-btn" title="暂停/继续" aria-label="暂停">⏸</button>
+        <button type="button" id="btn-speed-1" class="status-icon-btn speed-btn active" data-speed="1">1×</button>
+        <button type="button" id="btn-speed-3" class="status-icon-btn speed-btn" data-speed="3">3×</button>
+        <button type="button" id="btn-speed-5" class="status-icon-btn speed-btn" data-speed="5">5×</button>
       </div>
-      <div class="bar-row bar-stats" id="status-bar">
-        <span class="stat">稳定<b id="stability">75</b></span>
-        <span class="stat">战争支持<b id="war-support">30</b></span>
-        <span class="stat">政治权力<b id="political-power">0</b></span>
-        <span class="stat">紧张度<b id="tension">12</b>%</span>
-        <span class="stat stat-loc">驻地<b id="location">柏林</b></span>
+      <div class="status-center" id="date-display">1936/1/1</div>
+      <div class="status-right">
+        <span class="status-chip" title="稳定"><span id="stability">75</span></span>
+        <span class="status-chip war" title="战争支持"><span id="war-support">30</span></span>
+        <span class="status-chip pp" title="政治权力"><span id="political-power">50</span></span>
+        <button type="button" id="btn-notif-toggle" class="status-icon-btn notif-btn" aria-label="通知">
+          🔔<span id="notif-badge" class="notif-badge" hidden>0</span>
+        </button>
       </div>
     </header>
 
-    <main id="game-area">
-      <section id="text-stream" aria-live="polite"></section>
+    <!-- 下拉通知栏 -->
+    <div id="shade-backdrop"></div>
+    <aside id="notification-shade" aria-label="通知中心">
+      <div class="shade-handle"></div>
+      <div class="shade-header">通知中心</div>
+      <div class="shade-stats">
+        <span>紧张度 <b id="tension">12</b>%</span>
+        <span>驻地 <b id="location">柏林</b></span>
+      </div>
+      <div id="notif-list" class="notif-list"></div>
+    </aside>
 
-      <aside id="sidebar">
-        <div id="map-section">
-          <svg id="strategic-map" viewBox="0 0 340 200" role="img" aria-label="中欧战略地图"></svg>
-          <p id="map-info" class="map-info">幕僚态势图</p>
+    <!-- 上半屏：应用区 -->
+    <section id="main-screen">
+      <!-- 主屏幕（应用图标） -->
+      <div id="app-home" class="app-screen home-screen">
+        <div class="home-clock">
+          <time id="home-date">1936年1月1日</time>
+          <p class="home-sub">总理府 · 办公终端</p>
         </div>
-
-        <div id="actions-panel">
-          <div class="panel-label">主动行事</div>
-          <div class="action-btns">
-            <button type="button" id="btn-audience" class="action-btn">接见</button>
-            <button type="button" id="btn-diplomacy" class="action-btn">外交</button>
+        <nav class="app-grid" aria-label="应用">
+          <button type="button" class="app-launcher" data-app="focus">
+            <span class="app-icon app-icon-focus">政</span>
+            <span class="app-name">国策</span>
+          </button>
+          <button type="button" class="app-launcher" data-app="diplomacy">
+            <span class="app-icon app-icon-dip">外</span>
+            <span class="app-name">外交</span>
+          </button>
+          <button type="button" class="app-launcher" data-app="intel">
+            <span class="app-icon app-icon-intel">情</span>
+            <span class="app-name">情报</span>
+          </button>
+          <button type="button" class="app-launcher" data-app="audience">
+            <span class="app-icon app-icon-aud">见</span>
+            <span class="app-name">接见</span>
+          </button>
+        </nav>
+        <div class="home-dock">
+          <div class="dock-preview">
+            <span id="dock-focus-preview">国策：待选</span>
           </div>
         </div>
+      </div>
 
-        <div id="focus-panel">
-          <div class="panel-label">国策</div>
+      <!-- 国策应用 -->
+      <div id="app-focus" class="app-screen" hidden>
+        <header class="app-header">
+          <button type="button" class="nav-back">‹ 主屏</button>
+          <h1>国策</h1>
+        </header>
+        <div class="app-body">
           <div id="focus-progress" hidden></div>
           <div id="focus-list"></div>
-        </div>
-
-        <div id="notebook">
-          <div class="panel-label">记事本</div>
-          <div class="notebook-grid">
-            <button type="button" class="notebook-cell" data-type="focus" title="国策记录">
-              <span class="cell-label">国策</span>
-              <span class="cell-preview" id="cell-focus">—</span>
-            </button>
-            <button type="button" class="notebook-cell" data-type="diplomacy" title="外交">
-              <span class="cell-label">外交</span>
-              <span class="cell-preview" id="cell-diplomacy">—</span>
-            </button>
-            <button type="button" class="notebook-cell" data-type="intel" title="情报">
-              <span class="cell-label">情报</span>
-              <span class="cell-preview" id="cell-intel">—</span>
-            </button>
-          </div>
-          <div id="notebook-detail" hidden>
-            <div id="notebook-detail-title" class="notebook-detail-title"></div>
-            <div id="notebook-detail-body"></div>
+          <button type="button" class="sub-menu-btn" data-sub-open="focus-log">查看国策记录 ›</button>
+          <div id="sub-focus-log" class="sub-screen" hidden>
+            <button type="button" class="sub-back" data-sub-close="focus-log">‹ 返回</button>
+            <h2>国策记录</h2>
+            <div id="notebook-focus-log" class="sub-content"></div>
           </div>
         </div>
-      </aside>
-    </main>
+      </div>
 
-    <footer id="event-prompt" hidden>
-      <div id="event-text"></div>
-      <div id="event-choices"></div>
-    </footer>
+      <!-- 外交应用 -->
+      <div id="app-diplomacy" class="app-screen" hidden>
+        <header class="app-header">
+          <button type="button" class="nav-back">‹ 主屏</button>
+          <h1>外交</h1>
+        </header>
+        <div class="app-body">
+          <button type="button" id="btn-diplomacy" class="app-action-btn">外交行动</button>
+          <button type="button" class="sub-menu-btn" data-sub-open="dip-log">外交电报记录 ›</button>
+          <div id="sub-dip-log" class="sub-screen" hidden>
+            <button type="button" class="sub-back" data-sub-close="dip-log">‹ 返回</button>
+            <h2>外交记录</h2>
+            <div id="notebook-diplomacy-log" class="sub-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 情报应用 -->
+      <div id="app-intel" class="app-screen" hidden>
+        <header class="app-header">
+          <button type="button" class="nav-back">‹ 主屏</button>
+          <h1>情报</h1>
+        </header>
+        <div class="app-body">
+          <button type="button" class="sub-menu-btn" data-sub-open="intel-log">情报简报 ›</button>
+          <div id="sub-intel-log" class="sub-screen" hidden>
+            <button type="button" class="sub-back" data-sub-close="intel-log">‹ 返回</button>
+            <h2>情报档案</h2>
+            <div id="notebook-intel-log" class="sub-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 接见应用 -->
+      <div id="app-audience" class="app-screen" hidden>
+        <header class="app-header">
+          <button type="button" class="nav-back">‹ 主屏</button>
+          <h1>接见</h1>
+        </header>
+        <div class="app-body">
+          <p class="app-hint">主动召见幕僚，消耗 8 政治权力。</p>
+          <button type="button" id="btn-audience" class="app-action-btn">发起接见</button>
+          <ul class="app-menu-list">
+            <li>戈培尔 · 宣传</li>
+            <li>戈林 · 军备</li>
+            <li>里宾特洛甫 · 外交</li>
+            <li>希姆莱 · 情报</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 下半屏：信息流 -->
+    <section id="info-panel">
+      <header class="info-header">
+        <span>讯息</span>
+        <span class="info-hint">办公室实时 feed</span>
+      </header>
+      <div id="text-stream" aria-live="polite"></div>
+      <footer id="event-prompt" hidden>
+        <div id="event-text"></div>
+        <div id="event-choices"></div>
+      </footer>
+    </section>
+  </div>
+
+  <!-- 记事本预览格（供 JS 写入，隐藏） -->
+  <div id="notebook-hidden" hidden aria-hidden="true">
+    <span id="cell-focus"></span>
+    <span id="cell-diplomacy"></span>
+    <span id="cell-intel"></span>
+    <div id="notebook-detail" hidden>
+      <div id="notebook-detail-title"></div>
+      <div id="notebook-detail-body"></div>
+    </div>
   </div>
 
   <script type="module" src="js/main.js"></script>
