@@ -10,11 +10,13 @@ import { applyPassiveEvent } from './events.js';
 import { dailyTick, sysStatusLine } from './effects.js';
 import { formatDateISO, LOCATION_NAMES } from './state.js';
 
-export function createDayCycle({ data, state, output, notebook, eventUI, onPause }) {
+export function createDayCycle({ data, state, output, notebook, eventUI, focusSystem }) {
   function processDayEnd() {
     if (state.awaitingChoice) return;
 
     dailyTick(state);
+    focusSystem?.applyDailyFocusEffects();
+    focusSystem?.tickFocus();
 
     const schedule = rollSchedule(data.scheduleWeights);
 

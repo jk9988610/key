@@ -16,7 +16,6 @@
           <button id="btn-speed-3" class="ctl-btn speed-btn" data-speed="3" title="快速">3×</button>
           <button id="btn-speed-5" class="ctl-btn speed-btn" data-speed="5" title="最快">5×</button>
         </div>
-        <button id="btn-map" class="ctl-btn ctl-map" type="button" title="战略地图">地图</button>
         <time id="date-display">1936年1月1日</time>
       </div>
       <div class="bar-row bar-stats" id="status-bar">
@@ -31,24 +30,38 @@
     <main id="game-area">
       <section id="text-stream" aria-live="polite"></section>
 
-      <aside id="notebook">
-        <div class="notebook-grid">
-          <button type="button" class="notebook-cell" data-type="focus" title="国策">
-            <span class="cell-label">国策</span>
-            <span class="cell-preview" id="cell-focus">—</span>
-          </button>
-          <button type="button" class="notebook-cell" data-type="diplomacy" title="外交">
-            <span class="cell-label">外交</span>
-            <span class="cell-preview" id="cell-diplomacy">—</span>
-          </button>
-          <button type="button" class="notebook-cell" data-type="intel" title="情报">
-            <span class="cell-label">情报</span>
-            <span class="cell-preview" id="cell-intel">—</span>
-          </button>
+      <aside id="sidebar">
+        <div id="map-section">
+          <svg id="strategic-map" viewBox="0 0 340 200" role="img" aria-label="中欧战略地图"></svg>
+          <p id="map-info" class="map-info">幕僚态势图</p>
         </div>
-        <div id="notebook-detail" hidden>
-          <div id="notebook-detail-title" class="notebook-detail-title"></div>
-          <div id="notebook-detail-body"></div>
+
+        <div id="focus-panel">
+          <div class="panel-label">国策</div>
+          <div id="focus-progress" hidden></div>
+          <div id="focus-list"></div>
+        </div>
+
+        <div id="notebook">
+          <div class="panel-label">记事本</div>
+          <div class="notebook-grid">
+            <button type="button" class="notebook-cell" data-type="focus" title="国策记录">
+              <span class="cell-label">国策</span>
+              <span class="cell-preview" id="cell-focus">—</span>
+            </button>
+            <button type="button" class="notebook-cell" data-type="diplomacy" title="外交">
+              <span class="cell-label">外交</span>
+              <span class="cell-preview" id="cell-diplomacy">—</span>
+            </button>
+            <button type="button" class="notebook-cell" data-type="intel" title="情报">
+              <span class="cell-label">情报</span>
+              <span class="cell-preview" id="cell-intel">—</span>
+            </button>
+          </div>
+          <div id="notebook-detail" hidden>
+            <div id="notebook-detail-title" class="notebook-detail-title"></div>
+            <div id="notebook-detail-body"></div>
+          </div>
         </div>
       </aside>
     </main>
@@ -57,19 +70,6 @@
       <div id="event-text"></div>
       <div id="event-choices"></div>
     </footer>
-  </div>
-
-  <div id="map-overlay" hidden>
-    <div class="map-panel">
-      <header class="map-header">
-        <span>中欧战略态势图 · 1936</span>
-        <button type="button" id="btn-map-close" class="ctl-btn" aria-label="关闭地图">✕</button>
-      </header>
-      <div class="map-body">
-        <svg id="strategic-map" viewBox="0 0 340 200" role="img" aria-label="中欧战略地图"></svg>
-        <p id="map-info" class="map-info">幕僚整理的静态态势图，点击领土查看简报。</p>
-      </div>
-    </div>
   </div>
 
   <script type="module" src="js/main.js"></script>

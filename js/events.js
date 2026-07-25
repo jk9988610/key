@@ -14,7 +14,7 @@ export function createEventUI({ promptEl, textEl, choicesEl, output, notebook, o
     }
 
     promptEl.hidden = false;
-    textEl.textContent = '请做出决定：';
+    textEl.textContent = eventDef.promptText || '请做出决定：';
     choicesEl.innerHTML = '';
 
     (eventDef.choices || []).forEach((choice) => {
@@ -23,23 +23,31 @@ export function createEventUI({ promptEl, textEl, choicesEl, output, notebook, o
       btn.className = 'choice-btn';
       btn.textContent = choice.text;
       btn.addEventListener('click', () => {
-        const { logs, notebook: nb } = applyEffects(state, choice.effects, {
-          trust: choice.trust,
-          flags: choice.flags,
-          notebook: choice.notebook,
-        });
+        if (choice.onSelect) {
+          choice.onSelect();
+        } else {
+          const { logs, notebook: nb } = applyEffects(state, choice.effects || {}, {
+            trust: choice.trust,
+            flags: choice.flags,
+            notebook: choice.notebook,
+          });
 
-        if (logs.length) {
-          output.append(`[SYS] ${logs.join(' | ')}`, 'sys');
-        }
-        if (nb) {
-          notebook.add(nb.type, nb.text, formatDateISO(state.date));
+          if (logs.length) {
+            output.append(`[SYS] ${logs.join(' | ')}`, 'sys');
+          }
+          if (nb) {
+            notebook.add(nb.type, nb.text, formatDateISO(state.date));
+          }
         }
 
         promptEl.hidden = true;
         state.awaitingChoice = false;
         onChoiceComplete?.();
-        onResume?.();
+
+        // 事件前若在运行，选择后自动恢复
+        if (state.wasRunningBeforeEvent) {
+          onResume?.();
+        }
       });
       choicesEl.appendChild(btn);
     });
