@@ -4,7 +4,8 @@
 
 ## 设计文档
 
-完整游戏脚本大纲见 [docs/GAME_SCRIPT_OUTLINE.md](docs/GAME_SCRIPT_OUTLINE.md)。
+- [游戏脚本大纲](docs/GAME_SCRIPT_OUTLINE.md) — 国策树、事件脚本、国家设定
+- [整体设计规划](docs/OVERALL_DESIGN_PLAN.md) — 元首第一人称视角、日常/出行、HOI4 系统取舍
 
 ## 本地运行
 
