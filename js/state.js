@@ -7,7 +7,7 @@ export function createInitialState() {
     stability: 75,
     tension: 12,
     warSupport: 30,
-    politicalPower: 0,
+    politicalPower: 50,
     factories: 50,
     location: 'berlin',
     diplomacy: { AUS: 55, CZE: 10, FRA: -40, ENG: -10, ITA: 20, SOV: -30, POL: -15 },

@@ -3,7 +3,7 @@ import { applyEffects } from './effects.js';
 import { formatDateISO } from './state.js';
 import focusData, { STARTER_FOCUS_IDS } from './data/focuses.js';
 
-export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDUpdate, eventUI }) {
+export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDUpdate, eventUI, storySystem }) {
   const completed = new Set();
 
   function getDef(id) {
@@ -45,9 +45,8 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
     state.focusActive = id;
     state.focusProgress = 0;
     if (!silent) {
-      output.append(`[FOC] 国策启动：${def.name}（${def.days} 日）`, 'foc');
-      output.appendNarrative([`「${def.name}」的方案摆上桌面。`, def.desc]);
-      notebook.add('focus', `进行中: ${def.name} 0/${def.days}`, formatDateISO(state.date));
+      output.appendNarrative([`「${def.name}」——我拍板。`, def.desc]);
+      notebook.add('focus', `进行中: ${def.name}`, formatDateISO(state.date));
     }
     onHUDUpdate?.();
     renderPanel();
@@ -61,11 +60,15 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
   }
 
   function tickFocus() {
-    if (!state.focusActive) return;
+    if (!state.focusActive) return false;
     const def = getDef(state.focusActive);
-    if (!def) return;
-    if (state.focusProgress >= def.days) completeFocus();
-    else renderPanel();
+    if (!def) return false;
+    if (state.focusProgress >= def.days) {
+      completeFocus();
+      return true;
+    }
+    renderPanel();
+    return false;
   }
 
   function completeFocus() {
@@ -82,8 +85,11 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
     }
 
     output.appendNarrative(def.completeNarrative || [`「${def.name}」完成了。`]);
-    output.append(`[FOC] 国策完成：${def.name}`, 'foc');
     if (def.notebook) notebook.add('focus', def.notebook, formatDateISO(state.date));
+
+    if (def.storyOnComplete) {
+      storySystem?.onFocusComplete(id, def.storyOnComplete);
+    }
 
     onMapUpdate?.();
     onHUDUpdate?.();
@@ -91,15 +97,15 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
   }
 
   function showStarterChoice() {
-    const starters = STARTER_FOCUS_IDS.map((id) => getDef(id));
+    const starters = STARTER_FOCUS_IDS.map((id) => getDef(id)).filter(Boolean);
     eventUI.showChoiceEvent({
       narrative: [
-        '里宾特洛甫把一份名单放在我桌上。',
-        '「元首，今年的国策，您想从哪里开始？」',
+        '里宾特洛甫把国策方案放在桌上。',
+        '「元首，1936年——我们从哪里开始？」',
       ],
-      promptText: '选择首个国策：',
+      promptText: '选择首个国策（史实线常先莱茵兰或工业线）：',
       choices: starters.map((def) => ({
-        text: `${def.name}（${def.days}日 / ${def.cost}政治权力）`,
+        text: `${def.name}（${def.days}日/${def.cost}）`,
         onSelect: () => startFocus(def.id, true),
       })),
     }, state);
@@ -129,11 +135,11 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
     if (progressEl) progressEl.hidden = true;
 
     const available = getAvailable();
-    listEl.innerHTML = available.map((id) => {
-      const def = getDef(id);
-      const check = canStart(id);
+    listEl.innerHTML = available.map((fid) => {
+      const def = getDef(fid);
+      const check = canStart(fid);
       const disabled = check.ok ? '' : 'disabled';
-      return `<button type="button" class="focus-start-btn" data-focus="${id}" ${disabled} title="${check.ok ? def.desc : check.reason}">${def.name}<span class="focus-cost">${def.cost}·${def.days}日</span></button>`;
+      return `<button type="button" class="focus-start-btn" data-focus="${fid}" ${disabled} title="${check.ok ? def.desc : check.reason}">${def.name}<span class="focus-cost">${def.cost}·${def.days}日</span></button>`;
     }).join('') || '<p class="focus-empty">暂无可选国策</p>';
 
     listEl.querySelectorAll('.focus-start-btn:not([disabled])').forEach((btn) => {
@@ -147,7 +153,6 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
     tickFocus,
     showStarterChoice,
     renderPanel,
-    getAvailable,
     completed,
   };
 }

@@ -1,139 +1,57 @@
-import {
-  checkConditions,
-  filterByConditions,
-  pickFromMix,
-  pickRandom,
-  pickWeighted,
-  rollSchedule,
-} from './conditions.js';
-import { applyPassiveEvent } from './events.js';
-import { dailyTick, sysStatusLine } from './effects.js';
-import { formatDateISO, LOCATION_NAMES } from './state.js';
+import { dailyTick } from './effects.js';
+import { formatDateISO } from './state.js';
 
-export function createDayCycle({ data, state, output, notebook, eventUI, focusSystem }) {
+/** 环境描写（低频率随机插入，不暂停） */
+const AMBIENT = [
+  '窗外柏林的天空灰白。',
+  '戈培尔的简报在桌上。我没翻开。',
+  '听了一会儿瓦格纳。',
+  '无人求见。正合我意。',
+];
+
+/**
+ * 日循环 — 主动为主：
+ * - 默认静默推进（无文本）
+ * - 高速时每 14 日一条周摘要
+ * - 极低概率环境描写
+ * - 剧情/AI 由外部模块驱动
+ */
+export function createDayCycle({ state, output, focusSystem, aiScript, storySystem }) {
+  let daysSilent = 0;
+
   function processDayEnd() {
     if (state.awaitingChoice) return;
 
     dailyTick(state);
     focusSystem?.applyDailyFocusEffects();
-    focusSystem?.tickFocus();
+    const completedFocus = focusSystem?.tickFocus();
 
-    const schedule = rollSchedule(data.scheduleWeights);
+    aiScript?.tick();
 
-    if (state.speed >= 5 && schedule === 'quiet') {
-      state.quietBuffer += 1;
-      if (state.quietBuffer < 7) return;
-      state.quietBuffer = 0;
-      output.append('[SYS] 过去七日无大事。国策与政务在后台推进。', 'sys');
-      output.append(sysStatusLine(state), 'sys');
+    daysSilent += 1;
+
+    // 国策完成时的叙事已在 focus 模块输出，此处不重复
+    if (completedFocus) {
+      daysSilent = 0;
       return;
     }
 
-    state.quietBuffer = 0;
-
-    switch (schedule) {
-      case 'quiet':
-        handleQuiet();
-        break;
-      case 'routine':
-        handleRoutine();
-        break;
-      case 'decision':
-        handleDecision();
-        break;
-      case 'travel':
-        handleTravel();
-        break;
-      default:
-        handleQuiet();
-    }
-
-    if (state.location !== 'berlin' && Math.random() < 0.15) {
-      output.append(`[现场] 今日在${LOCATION_NAMES[state.location] || state.location}办公。`, 'narrative');
-    }
-  }
-
-  function handleQuiet() {
-    const q = pickRandom(data.quiet);
-    if (q) output.append(q.text, 'narrative');
-    output.append(sysStatusLine(state), 'sys');
-  }
-
-  function handleRoutine() {
-    const buckets = {
-      telegram: data.telegrams,
-      briefing: data.briefings,
-      desk: data.desk,
-    };
-    const item = pickFromMix(data.routineMix, buckets, state);
-
-    if (!item) {
-      handleQuiet();
+    // 高速模式：每 14 日一条摘要
+    if (state.speed >= 3 && daysSilent >= 14) {
+      daysSilent = 0;
+      output.append(
+        `[SYS] ${formatDateISO(state.date)} | 稳定${state.stability} | 政${state.politicalPower} | 紧张${state.tension}%`,
+        'sys',
+      );
       return;
     }
 
-    if (item.text) {
-      applyPassiveEvent(item, state, output, notebook);
-      output.append('[DIP] 电报已归档', 'dip');
-    } else if (item.sys) {
-      applyPassiveEvent(item, state, output, notebook);
-      output.append('[简报] 军事简报已记录', 'brief');
-    } else if (item.choices) {
-      eventUI.showChoiceEvent(item, state);
-      return;
+    // 常速以下：约 5% 概率一句环境描写（不暂停）
+    if (state.speed <= 1 && Math.random() < 0.05) {
+      const line = AMBIENT[Math.floor(Math.random() * AMBIENT.length)];
+      output.append(line, 'narrative');
+      daysSilent = 0;
     }
-
-    output.append(sysStatusLine(state), 'sys');
-  }
-
-  function handleDecision() {
-    const buckets = {
-      audience: data.audiences,
-      lunch: data.lunches,
-      desk: data.desk,
-    };
-    const item = pickFromMix(data.decisionMix, buckets, state);
-
-    if (!item) {
-      handleRoutine();
-      return;
-    }
-
-    if (item.choices) {
-      const enriched = { ...item };
-      if (item.character) {
-        enriched.narrative = [
-          ...(item.narrative || []),
-        ];
-      }
-      eventUI.showChoiceEvent(enriched, state);
-      output.append('[EVT] 抉择日 — 等待决断', 'evt');
-      return;
-    }
-
-    handleRoutine();
-  }
-
-  function handleTravel() {
-    const pool = filterByConditions(data.travel, state);
-    const item = pool.length ? pickRandom(pool) : null;
-
-    if (!item) {
-      handleDecision();
-      return;
-    }
-
-    eventUI.showChoiceEvent(
-      {
-        ...item,
-        narrative: [
-          ...(item.narrative || []),
-          `目的地：${item.destination}`,
-        ],
-      },
-      state,
-    );
-    output.append('[EVT] 出行提议 — 等待决断', 'evt');
   }
 
   return { processDayEnd };

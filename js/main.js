@@ -5,6 +5,9 @@ import { createEventUI } from './events.js';
 import { createFocusSystem } from './focus.js';
 import { createMap } from './map.js';
 import { createNotebook } from './notebook.js';
+import { createStorySystem } from './story.js';
+import { createAIScript } from './ai.js';
+import { createActionSystem } from './actions.js';
 import { createInitialState, formatDateCN, LOCATION_NAMES } from './state.js';
 
 const state = createInitialState();
@@ -63,6 +66,15 @@ const eventUI = createEventUI({
   },
 });
 
+const storySystem = createStorySystem({
+  state,
+  output,
+  notebook,
+  eventUI,
+  onMapUpdate: () => map.render(),
+  onHUDUpdate: updateHUD,
+});
+
 const focusSystem = createFocusSystem({
   state,
   output,
@@ -70,16 +82,20 @@ const focusSystem = createFocusSystem({
   onMapUpdate: () => map.render(),
   onHUDUpdate: updateHUD,
   eventUI,
+  storySystem,
 });
 
+const aiScript = createAIScript({ state, notebook, storySystem });
+
 const dayCycle = createDayCycle({
-  data: dailyEvents,
   state,
   output,
-  notebook,
-  eventUI,
   focusSystem,
+  aiScript,
+  storySystem,
 });
+
+const actions = createActionSystem({ state, output, eventUI, onHUDUpdate: updateHUD });
 
 let lastTick = performance.now();
 const MS_PER_DAY = { 1: 1200, 3: 400, 5: 120 };
@@ -110,21 +126,20 @@ document.querySelectorAll('.speed-btn').forEach((btn) => {
     document.querySelectorAll('.speed-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     state.speed = Number(btn.dataset.speed);
-    state.quietBuffer = 0;
   });
 });
 
 function showOpening() {
   output.appendNarrative([
     '我醒来时，窗外柏林的天空是铅灰色的。',
-    '新年。帝国的第三年——不，用我们的说法，是民族觉醒后的第三年。',
+    '新年。1936年。帝国在等我做出选择。',
   ]);
-  output.append('[SYS] 日期: 1936-01-01 | 稳定度: 75 | 战争支持度: 30', 'sys');
-  output.append('[DIP] 奥地利: 关系 55 | 捷克斯洛伐克: 关系 10 | 法国: 关系 -40', 'dip');
-  notebook.add('diplomacy', '法国: -40 | 奥地利: 55', '1936-01-01');
+  output.append('[SYS] 稳定75 | 战争支持30 | 点击侧栏国策/主动行事推进局势', 'sys');
+  notebook.add('diplomacy', '法国:-40 奥地利:55', '1936-01-01');
 }
 
 notebook.bindCells();
+actions.bind();
 focusSystem.renderPanel();
 updateHUD();
 showOpening();

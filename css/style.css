@@ -169,6 +169,33 @@ body {
   white-space: nowrap;
 }
 
+/* ── 主动行事 ── */
+#actions-panel {
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.action-btns {
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px 6px;
+}
+
+.action-btn {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--blue);
+  font-family: inherit;
+  font-size: 10px;
+  padding: 5px 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.action-btn:active { border-color: var(--green); color: var(--green); }
+
 /* ── 国策面板 ── */
 #focus-panel {
   border-bottom: 1px solid var(--border);
@@ -333,9 +360,16 @@ body {
     border-bottom: none;
   }
 
+  #actions-panel {
+    width: 100%;
+    border-top: 1px solid var(--border);
+    order: 3;
+  }
+
   #notebook {
     width: 100%;
     border-top: 1px solid var(--border);
+    order: 4;
   }
 
   .notebook-grid { margin: 0 6px 6px; }
