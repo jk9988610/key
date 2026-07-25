@@ -60,7 +60,7 @@ body {
 #btn-pause.paused { color: var(--yellow); }
 
 #date-display { font-weight: bold; min-width: 140px; }
-#status-bar { margin-left: auto; display: flex; gap: 1.5rem; color: var(--text-dim); }
+#status-bar { margin-left: auto; display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; color: var(--text-dim); font-size: 12px; }
 
 #game-area {
   display: grid;
@@ -81,6 +81,7 @@ body {
   color: var(--text);
 }
 
+#text-stream .brief { color: var(--blue); }
 #text-stream .sys  { color: var(--green); }
 #text-stream .dip  { color: var(--blue); }
 #text-stream .int  { color: var(--yellow); }
@@ -148,6 +149,7 @@ body {
 
 #event-choices {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
