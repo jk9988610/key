@@ -77,7 +77,7 @@ export function createDayCycle({ data, state, output, notebook, eventUI, onPause
       applyPassiveEvent(item, state, output, notebook);
       output.append('[简报] 军事简报已记录', 'brief');
     } else if (item.choices) {
-      eventUI.showChoiceEvent(item, state, () => onPause?.(true));
+      eventUI.showChoiceEvent(item, state);
       return;
     }
 
@@ -104,8 +104,8 @@ export function createDayCycle({ data, state, output, notebook, eventUI, onPause
           ...(item.narrative || []),
         ];
       }
-      eventUI.showChoiceEvent(enriched, state, () => onPause?.(true));
-      output.append('[EVT] 抉择日 — 游戏已自动暂停', 'evt');
+      eventUI.showChoiceEvent(enriched, state);
+      output.append('[EVT] 抉择日 — 等待决断', 'evt');
       return;
     }
 
@@ -130,9 +130,8 @@ export function createDayCycle({ data, state, output, notebook, eventUI, onPause
         ],
       },
       state,
-      () => onPause?.(true),
     );
-    output.append('[EVT] 出行提议 — 游戏已自动暂停', 'evt');
+    output.append('[EVT] 出行提议 — 等待决断', 'evt');
   }
 
   return { processDayEnd };

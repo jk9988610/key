@@ -1,13 +1,13 @@
 import { applyEffects } from './effects.js';
 import { formatDateISO } from './state.js';
 
-export function createEventUI({ promptEl, textEl, choicesEl, output, notebook, onPause }) {
-  function showChoiceEvent(eventDef, state, onDone) {
+export function createEventUI({ promptEl, textEl, choicesEl, output, notebook, onPause, onResume, onChoiceComplete }) {
+  function showChoiceEvent(eventDef, state) {
+    state.wasRunningBeforeEvent = !state.paused;
     state.awaitingChoice = true;
-    if (onPause) onPause(true);
+    onPause?.(true);
 
-    const lines = eventDef.narrative || [];
-    output.appendNarrative(lines);
+    output.appendNarrative(eventDef.narrative || []);
 
     if (eventDef.character) {
       output.append(`[简报] ${eventDef.character}求见`, 'brief');
@@ -19,6 +19,8 @@ export function createEventUI({ promptEl, textEl, choicesEl, output, notebook, o
 
     (eventDef.choices || []).forEach((choice) => {
       const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'choice-btn';
       btn.textContent = choice.text;
       btn.addEventListener('click', () => {
         const { logs, notebook: nb } = applyEffects(state, choice.effects, {
@@ -36,8 +38,8 @@ export function createEventUI({ promptEl, textEl, choicesEl, output, notebook, o
 
         promptEl.hidden = true;
         state.awaitingChoice = false;
-        output.append('[EVT] 事件已处理。点击 ▶ 继续时间流逝。', 'evt');
-        onDone?.();
+        onChoiceComplete?.();
+        onResume?.();
       });
       choicesEl.appendChild(btn);
     });

@@ -5,50 +5,45 @@ export function createNotebook() {
     focus: [],
     diplomacy: [],
     intel: [],
-    memo: [],
   };
 
   const previews = {
     focus: document.getElementById('cell-focus'),
     diplomacy: document.getElementById('cell-diplomacy'),
     intel: document.getElementById('cell-intel'),
-    memo: document.getElementById('cell-memo'),
   };
 
   const detail = document.getElementById('notebook-detail');
+  const detailTitle = document.getElementById('notebook-detail-title');
+  const detailBody = document.getElementById('notebook-detail-body');
 
   function add(type, text, dateStr) {
     if (!data[type]) return;
     const entry = `[${dateStr}] ${text}`;
     data[type].unshift(entry);
     if (data[type].length > MAX_ENTRIES) data[type].pop();
-    previews[type].textContent = entry;
+    if (previews[type]) previews[type].textContent = text;
   }
 
   function renderDetail(type) {
+    const labels = { focus: '国策', diplomacy: '外交', intel: '情报' };
+    if (detailTitle) detailTitle.textContent = labels[type] || type;
     const items = data[type];
     if (!items.length) {
-      detail.textContent = '（空）';
+      detailBody.innerHTML = '<p class="notebook-empty">（暂无记录）</p>';
       return;
     }
-    detail.innerHTML = items.map((e) => `<div>${escapeHtml(e)}</div>`).join('');
+    detailBody.innerHTML = items.map((e) => `<p class="notebook-entry">${escapeHtml(e)}</p>`).join('');
   }
 
   function bindCells() {
     document.querySelectorAll('.notebook-cell').forEach((cell) => {
       cell.addEventListener('click', () => {
         const type = cell.dataset.type;
+        document.querySelectorAll('.notebook-cell').forEach((c) => c.classList.remove('active'));
+        cell.classList.add('active');
         detail.hidden = false;
-        if (type === 'memo') {
-          detail.innerHTML = `<textarea id="memo-edit" rows="5" style="width:100%">${escapeHtml(data.memo[0] || '')}</textarea>`;
-          const ta = document.getElementById('memo-edit');
-          ta.addEventListener('change', () => {
-            data.memo = [ta.value];
-            previews.memo.textContent = ta.value.slice(0, 24) || '点击编辑';
-          });
-        } else {
-          renderDetail(type);
-        }
+        renderDetail(type);
       });
     });
   }

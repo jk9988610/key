@@ -2,59 +2,74 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>元首办公室 — 钢铁雄心4 第一人称文本版</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div id="app">
-  <header id="top-bar">
-    <div id="time-controls">
-      <button id="btn-pause" title="暂停/继续" aria-label="暂停">⏸</button>
-      <button id="btn-speed-1" class="speed-btn active" data-speed="1" title="常速">▶</button>
-      <button id="btn-speed-3" class="speed-btn" data-speed="3" title="快速">▶▶</button>
-      <button id="btn-speed-5" class="speed-btn" data-speed="5" title="最快">▶▶▶</button>
-    </div>
-    <div id="date-display">1936年1月1日</div>
-    <div id="status-bar">
-      <span>稳定 <span id="stability">75</span></span>
-      <span>战争支持 <span id="war-support">30</span></span>
-      <span>政治权力 <span id="political-power">0</span></span>
-      <span>紧张度 <span id="tension">12</span>%</span>
-      <span id="location-wrap">驻地 <span id="location">柏林总理府</span></span>
-    </div>
-  </header>
-
-  <main id="game-area">
-    <section id="text-stream" aria-live="polite"></section>
-
-    <aside id="notebook">
-      <div class="notebook-grid">
-        <button class="notebook-cell" data-type="focus" title="国策">
-          <span class="cell-label">国策</span>
-          <span class="cell-preview" id="cell-focus">—</span>
-        </button>
-        <button class="notebook-cell" data-type="diplomacy" title="外交">
-          <span class="cell-label">外交</span>
-          <span class="cell-preview" id="cell-diplomacy">—</span>
-        </button>
-        <button class="notebook-cell" data-type="intel" title="情报">
-          <span class="cell-label">情报</span>
-          <span class="cell-preview" id="cell-intel">—</span>
-        </button>
-        <button class="notebook-cell" data-type="memo" title="备忘">
-          <span class="cell-label">备忘</span>
-          <span class="cell-preview" id="cell-memo">点击编辑</span>
-        </button>
+    <header id="top-bar">
+      <div class="bar-row bar-controls">
+        <div id="time-controls">
+          <button id="btn-pause" class="ctl-btn" title="暂停/继续" aria-label="暂停">⏸</button>
+          <button id="btn-speed-1" class="ctl-btn speed-btn active" data-speed="1" title="常速">1×</button>
+          <button id="btn-speed-3" class="ctl-btn speed-btn" data-speed="3" title="快速">3×</button>
+          <button id="btn-speed-5" class="ctl-btn speed-btn" data-speed="5" title="最快">5×</button>
+        </div>
+        <button id="btn-map" class="ctl-btn ctl-map" type="button" title="战略地图">地图</button>
+        <time id="date-display">1936年1月1日</time>
       </div>
-      <div id="notebook-detail" hidden></div>
-    </aside>
-  </main>
+      <div class="bar-row bar-stats" id="status-bar">
+        <span class="stat">稳定<b id="stability">75</b></span>
+        <span class="stat">战争支持<b id="war-support">30</b></span>
+        <span class="stat">政治权力<b id="political-power">0</b></span>
+        <span class="stat">紧张度<b id="tension">12</b>%</span>
+        <span class="stat stat-loc">驻地<b id="location">柏林</b></span>
+      </div>
+    </header>
 
-  <footer id="event-prompt" hidden>
-    <div id="event-text"></div>
-    <div id="event-choices"></div>
-  </footer>
+    <main id="game-area">
+      <section id="text-stream" aria-live="polite"></section>
+
+      <aside id="notebook">
+        <div class="notebook-grid">
+          <button type="button" class="notebook-cell" data-type="focus" title="国策">
+            <span class="cell-label">国策</span>
+            <span class="cell-preview" id="cell-focus">—</span>
+          </button>
+          <button type="button" class="notebook-cell" data-type="diplomacy" title="外交">
+            <span class="cell-label">外交</span>
+            <span class="cell-preview" id="cell-diplomacy">—</span>
+          </button>
+          <button type="button" class="notebook-cell" data-type="intel" title="情报">
+            <span class="cell-label">情报</span>
+            <span class="cell-preview" id="cell-intel">—</span>
+          </button>
+        </div>
+        <div id="notebook-detail" hidden>
+          <div id="notebook-detail-title" class="notebook-detail-title"></div>
+          <div id="notebook-detail-body"></div>
+        </div>
+      </aside>
+    </main>
+
+    <footer id="event-prompt" hidden>
+      <div id="event-text"></div>
+      <div id="event-choices"></div>
+    </footer>
+  </div>
+
+  <div id="map-overlay" hidden>
+    <div class="map-panel">
+      <header class="map-header">
+        <span>中欧战略态势图 · 1936</span>
+        <button type="button" id="btn-map-close" class="ctl-btn" aria-label="关闭地图">✕</button>
+      </header>
+      <div class="map-body">
+        <svg id="strategic-map" viewBox="0 0 340 200" role="img" aria-label="中欧战略地图"></svg>
+        <p id="map-info" class="map-info">幕僚整理的静态态势图，点击领土查看简报。</p>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="js/main.js"></script>
