@@ -1,4 +1,4 @@
-{
+export default {
   "scheduleWeights": {
     "quiet": 60,
     "routine": 25,
@@ -280,4 +280,4 @@
       ]
     }
   ]
-}
+};

@@ -1,3 +1,4 @@
+import dailyEvents from './data/daily_events.js';
 import { createDayCycle } from './dayCycle.js';
 import { createOutput } from './consoleOutput.js';
 import { createEventUI } from './events.js';
@@ -39,12 +40,29 @@ function setPaused(paused) {
   els.btnPause.title = paused ? '继续' : '暂停';
 }
 
-let dayCycle = null;
+const eventUI = createEventUI({
+  promptEl: els.eventPrompt,
+  textEl: els.eventText,
+  choicesEl: els.eventChoices,
+  output,
+  notebook,
+  onPause: setPaused,
+});
+
+const dayCycle = createDayCycle({
+  data: dailyEvents,
+  state,
+  output,
+  notebook,
+  eventUI,
+  onPause: setPaused,
+});
+
 let lastTick = 0;
 const MS_PER_DAY = { 1: 1200, 3: 400, 5: 120 };
 
 function tick() {
-  if (state.paused || state.awaitingChoice || !dayCycle) return;
+  if (state.paused || state.awaitingChoice) return;
   state.date.setDate(state.date.getDate() + 1);
   updateHUD();
   dayCycle.processDayEnd();
@@ -52,27 +70,25 @@ function tick() {
 }
 
 function gameLoop(timestamp) {
-  if (!state.paused && !state.awaitingChoice && dayCycle && timestamp - lastTick >= MS_PER_DAY[state.speed]) {
+  if (!state.paused && !state.awaitingChoice && timestamp - lastTick >= MS_PER_DAY[state.speed]) {
     tick();
     lastTick = timestamp;
   }
   requestAnimationFrame(gameLoop);
 }
 
-function bindControls() {
-  els.btnPause.addEventListener('click', () => {
-    if (!state.awaitingChoice) setPaused(!state.paused);
-  });
+els.btnPause.addEventListener('click', () => {
+  if (!state.awaitingChoice) setPaused(!state.paused);
+});
 
-  document.querySelectorAll('.speed-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.speed-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.speed = Number(btn.dataset.speed);
-      state.quietBuffer = 0;
-    });
+document.querySelectorAll('.speed-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.speed-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.speed = Number(btn.dataset.speed);
+    state.quietBuffer = 0;
   });
-}
+});
 
 function showOpening() {
   els.textStream.innerHTML = '';
@@ -88,35 +104,7 @@ function showOpening() {
   notebook.add('diplomacy', '法国: -40 | 奥地利: 55', '1936-01-01');
 }
 
-async function init() {
-  const res = await fetch('js/data/daily_events.json');
-  const dailyEvents = await res.json();
-
-  const eventUI = createEventUI({
-    promptEl: els.eventPrompt,
-    textEl: els.eventText,
-    choicesEl: els.eventChoices,
-    output,
-    notebook,
-    onPause: setPaused,
-  });
-
-  dayCycle = createDayCycle({
-    data: dailyEvents,
-    state,
-    output,
-    notebook,
-    eventUI,
-    onPause: setPaused,
-  });
-
-  notebook.bindCells();
-  bindControls();
-  updateHUD();
-  showOpening();
-  requestAnimationFrame(gameLoop);
-}
-
-init().catch((err) => {
-  output.append(`[SYS] 加载失败: ${err.message}`, 'sys');
-});
+notebook.bindCells();
+updateHUD();
+showOpening();
+requestAnimationFrame(gameLoop);

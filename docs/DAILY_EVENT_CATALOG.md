@@ -208,8 +208,8 @@
 
 ## 十、实现映射
 
-| 文档 ID 前缀 | JSON `type` 字段 | 模块 |
-|--------------|------------------|------|
+| 文档 ID 前缀 | JS 模块 `type` 字段 | 模块 |
+|--------------|----------------------|------|
 | Q | `quiet` | `dayCycle.js` |
 | AUD | `audience` | `events.js` |
 | BRF | `briefing` | `dayCycle.js` |
@@ -217,6 +217,8 @@
 | LNC | `lunch` | `events.js` |
 | TEL | `telegram` | `dayCycle.js` |
 | TRV | `travel` | `events.js` |
+
+数据文件：`js/data/daily_events.js`（ES 模块内联，无需网络加载）
 
 ---
 

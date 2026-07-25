@@ -452,7 +452,7 @@ OVERALL_DESIGN_PLAN.md     →  视角转换、日常循环、取舍原则（how
 （待写）PERSPECTIVE_MAPPING.json  →  HOI4 系统 → 游戏模块机器可读对照
 ```
 
-**已实现：** 日循环 + 接见队列（`js/dayCycle.js`、`js/data/daily_events.json`）
+**已实现：** 日循环 + 接见队列（`js/dayCycle.js`、`js/data/daily_events.js`）
 
 ---
 
