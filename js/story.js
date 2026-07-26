@@ -3,6 +3,15 @@ import { applyEffects } from './effects.js';
 import { formatDateISO } from './state.js';
 import storyData from './data/story_events.js';
 
+const STORY_APP = {
+  STORY_RHINELAND_FALLOUT: 'focus',
+  STORY_SCHUSCHNIG: 'diplomacy',
+  STORY_ANNEX_AUSTRIA: 'diplomacy',
+  STORY_MUNICH: 'diplomacy',
+  STORY_PRAGUE: 'diplomacy',
+  STORY_ANTI_COMINTERN: 'diplomacy',
+};
+
 export function createStorySystem({ state, output, notebook, eventUI, onHUDUpdate }) {
   const fired = new Set();
 
@@ -18,15 +27,21 @@ export function createStorySystem({ state, output, notebook, eventUI, onHUDUpdat
       return true;
     }
 
-    eventUI.showChoiceEvent({
+    const appId = def.appId || STORY_APP[id] || 'audience';
+    eventUI.enqueueChoice({
+      appId,
+      title: def.critical ? '重大事件' : '新消息',
+      preview: def.narrative?.[0] || '',
       narrative: def.narrative,
-      promptText: def.critical ? '重大事件' : undefined,
+      promptText: def.critical ? '重大事件' : '请做出决定',
+      critical: def.critical,
+      deadlineDays: def.deadlineDays ?? (def.critical ? 21 : 14),
       choices: (def.choices || []).map((c) => ({
         text: c.text,
         effects: c.effects || {},
         flags: c.flags,
       })),
-    }, state);
+    });
     return true;
   }
 

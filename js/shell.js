@@ -324,10 +324,16 @@ export function createShell() {
     pulling = false;
   }
 
-  statusBar?.addEventListener('touchstart', (e) => onPullStart(e.touches[0].clientY), { passive: true });
+  statusBar?.addEventListener('touchstart', (e) => {
+    if (e.target.closest('.status-app-icons, .status-speed-group')) return;
+    onPullStart(e.touches[0].clientY);
+  }, { passive: true });
   statusBar?.addEventListener('touchmove', (e) => onPullMove(e.touches[0].clientY), { passive: true });
   statusBar?.addEventListener('touchend', onPullEnd);
-  statusBar?.addEventListener('mousedown', (e) => onPullStart(e.clientY));
+  statusBar?.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.status-app-icons, .status-speed-group')) return;
+    onPullStart(e.clientY);
+  });
   window.addEventListener('mousemove', (e) => { if (pulling) onPullMove(e.clientY); });
   window.addEventListener('mouseup', onPullEnd);
 

@@ -98,17 +98,22 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
 
   function showStarterChoice() {
     const starters = STARTER_FOCUS_IDS.map((id) => getDef(id)).filter(Boolean);
-    eventUI.showChoiceEvent({
+    eventUI.enqueueChoice({
+      appId: 'focus',
+      title: '选择首个国策',
+      preview: '里宾特洛甫把国策方案放在桌上',
       narrative: [
         '里宾特洛甫把国策方案放在桌上。',
         '「元首，1936年——我们从哪里开始？」',
       ],
       promptText: '选择首个国策（史实线常先莱茵兰或工业线）：',
+      critical: true,
+      deadlineDays: 30,
       choices: starters.map((def) => ({
         text: `${def.name}（${def.days}日/${def.cost}）`,
         onSelect: () => startFocus(def.id, true),
       })),
-    }, state);
+    });
   }
 
   function updateFocusNotification() {

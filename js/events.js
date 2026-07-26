@@ -14,13 +14,15 @@ export function createEventUI({
   onResume,
   onChoiceComplete,
   onModalChange,
+  pending,
+  getState,
 }) {
   function showModal(show) {
     if (modalEl) modalEl.hidden = !show;
     onModalChange?.();
   }
 
-  function showChoiceEvent(eventDef, state) {
+  function resolveChoiceEvent(eventDef, state, { onDone } = {}) {
     state.wasRunningBeforeEvent = !state.paused;
     state.awaitingChoice = true;
     onPause?.(true);
@@ -51,9 +53,9 @@ export function createEventUI({
             notebook: choice.notebook,
           });
 
-        if (logs.length) {
-          output.append(`[SYS] ${logs.join(' | ')}`, 'sys');
-        }
+          if (logs.length) {
+            output.append(`[SYS] ${logs.join(' | ')}`, 'sys');
+          }
           if (nb) notebook.add(nb.type, nb.text, formatDateISO(state.date));
         }
 
@@ -61,6 +63,7 @@ export function createEventUI({
         modalNarrative.innerHTML = '';
         state.awaitingChoice = false;
         onChoiceComplete?.();
+        onDone?.();
 
         if (state.wasRunningBeforeEvent) onResume?.();
       });
@@ -68,7 +71,41 @@ export function createEventUI({
     });
   }
 
-  return { showChoiceEvent };
+  function showChoiceEvent(eventDef, state) {
+    resolveChoiceEvent(eventDef, state);
+  }
+
+  function enqueueChoice(def) {
+    return pending?.enqueue(def);
+  }
+
+  function openPending(pendingId, state) {
+    const item = pending?.getAll().find((i) => i.id === pendingId);
+    if (!item) return;
+
+    resolveChoiceEvent({
+      narrative: item.narrative,
+      promptText: item.promptText,
+      character: item.character,
+      choices: item.choices,
+    }, state, {
+      onDone: () => {
+        pending.remove(pendingId);
+      },
+    });
+  }
+
+  function renderAllPending() {
+    const state = getState?.();
+    ['focus', 'diplomacy', 'audience', 'intel'].forEach((appId) => {
+      const el = document.getElementById(`pending-${appId}`);
+      pending?.renderAppList(appId, el, {
+        onOpen: (id) => state && openPending(id, state),
+      });
+    });
+  }
+
+  return { showChoiceEvent, enqueueChoice, openPending, renderAllPending };
 }
 
 export function applyPassiveEvent(eventDef, state, output, notebook) {

@@ -1,24 +1,31 @@
 import { shouldSkipLog } from './consoleOutput.js';
+import { APP_META, TAG_TO_APP } from './pending.js';
 
 const NOTIFY_PREFIX = /^\[(SYS|DIP|FOC|EVT)\]/;
 
-const APP_META = {
-  sys: { name: '系统', icon: '系', color: 'sys' },
-  foc: { name: '国策', icon: '政', color: 'foc' },
+const NOTIFY_META = {
+  sys: { name: '情报', icon: '情', color: 'intel' },
+  foc: { name: '国策', icon: '政', color: 'focus' },
   dip: { name: '外交', icon: '外', color: 'dip' },
-  evt: { name: '事件', icon: '告', color: 'evt' },
+  evt: { name: '事件', icon: '见', color: 'aud' },
 };
 
 const SWIPE_ACTION_W = 112;
 
-export function createNotifications({ listEl }) {
+export function createNotifications({ listEl, statusIconsEl, onOpenApp, pending }) {
   const groups = {};
   const expanded = new Set();
   const muted = new Set();
+  const appRecency = {};
   let focusProgress = null;
   let msgIdSeq = 0;
   let revealedRow = null;
   const MAX_PER_GROUP = 20;
+
+  function bumpRecency(tag) {
+    appRecency[tag] = Date.now();
+    renderStatusIcons();
+  }
 
   function ensureGroup(appId) {
     if (!groups[appId]) groups[appId] = [];
@@ -28,7 +35,7 @@ export function createNotifications({ listEl }) {
   function add(text) {
     if (!NOTIFY_PREFIX.test(text) || shouldSkipLog(text)) return;
     const tag = text.match(/^\[(\w+)\]/)?.[1]?.toLowerCase();
-    if (!tag || !APP_META[tag] || muted.has(tag)) return;
+    if (!tag || !NOTIFY_META[tag] || muted.has(tag)) return;
 
     const body = text.replace(/^\[\w+\]\s*/, '');
     ensureGroup(tag).unshift({
@@ -38,12 +45,68 @@ export function createNotifications({ listEl }) {
       time: formatTime(),
     });
     if (groups[tag].length > MAX_PER_GROUP) groups[tag].pop();
+    bumpRecency(tag);
+    render();
+  }
+
+  function onPendingChange(item) {
+    if (item) {
+      add(pending.notifyText(item));
+      return;
+    }
+    renderStatusIcons();
     render();
   }
 
   function setFocusProgress(data) {
     focusProgress = data;
+    if (data) bumpRecency('foc');
     render();
+  }
+
+  function getOrderedTags() {
+    const tags = new Set();
+    if (focusProgress) tags.add('foc');
+    Object.keys(groups).forEach((id) => {
+      if (groups[id].length) tags.add(id);
+    });
+    pending?.getAppOrder().forEach((appId) => {
+      const tag = APP_META[appId]?.tag;
+      if (tag) tags.add(tag);
+    });
+    return [...tags].sort((a, b) => (appRecency[b] || 0) - (appRecency[a] || 0));
+  }
+
+  function renderStatusIcons() {
+    if (!statusIconsEl) return;
+    const order = getOrderedTags();
+    if (!order.length) {
+      statusIconsEl.innerHTML = '';
+      statusIconsEl.hidden = true;
+      return;
+    }
+
+    statusIconsEl.hidden = false;
+    statusIconsEl.innerHTML = order.map((tag) => {
+      const meta = NOTIFY_META[tag];
+      const appId = TAG_TO_APP[tag];
+      const pendingCount = pending?.getForApp(appId).length || 0;
+      const msgCount = groups[tag]?.length || 0;
+      const badge = pendingCount || msgCount;
+      return `
+        <button type="button" class="status-app-icon app-icon-${meta.color}" data-app="${appId}" title="${meta.name}">
+          ${meta.icon}
+          ${badge > 0 ? `<span class="status-app-badge">${badge > 9 ? '9+' : badge}</span>` : ''}
+        </button>
+      `;
+    }).join('');
+
+    statusIconsEl.querySelectorAll('[data-app]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onOpenApp?.(btn.dataset.app);
+      });
+    });
   }
 
   function toggleExpand(appId) {
@@ -87,31 +150,31 @@ export function createNotifications({ listEl }) {
     if (!listEl) return;
     revealedRow = null;
 
-    const appsWithContent = new Set();
-    if (focusProgress) appsWithContent.add('foc');
-    Object.keys(groups).forEach((id) => {
-      if (groups[id].length) appsWithContent.add(id);
-    });
+    const order = getOrderedTags();
 
-    if (!appsWithContent.size) {
+    if (!order.length) {
       listEl.innerHTML = '<p class="notif-empty">暂无通知</p>';
+      renderStatusIcons();
       return;
     }
 
-    const order = ['foc', 'evt', 'dip', 'sys'].filter((id) => appsWithContent.has(id));
-    listEl.innerHTML = order.map((id) => renderAppCard(id, groups[id] || [])).join('');
+    listEl.innerHTML = order.map((tag) => renderAppCard(tag, groups[tag] || [])).join('');
     bindCardEvents();
     bindSwipeRows();
+    renderStatusIcons();
   }
 
-  function renderAppCard(appId, messages) {
-    const meta = APP_META[appId];
-    const isOpen = expanded.has(appId);
-    const showProgress = appId === 'foc' && focusProgress;
+  function renderAppCard(tag, messages) {
+    const meta = NOTIFY_META[tag];
+    const appId = TAG_TO_APP[tag];
+    const isOpen = expanded.has(tag);
+    const showProgress = tag === 'foc' && focusProgress;
     const preview = messages[0]?.text || '';
     const count = messages.length;
     const hasMessages = count > 0;
-    const isMuted = muted.has(appId);
+    const isMuted = muted.has(tag);
+    const pendingItems = pending?.getForApp(appId) || [];
+    const pendingCount = pendingItems.length;
 
     let progressHtml = '';
     if (showProgress) {
@@ -127,24 +190,39 @@ export function createNotifications({ listEl }) {
       `;
     }
 
+    const pendingHtml = pendingItems.length ? `
+      <div class="notif-pending-list">
+        ${pendingItems.map((item) => {
+          const dl = pending.deadlineLabel(item);
+          return `
+            <button type="button" class="notif-pending-item ${item.critical ? 'critical' : ''}" data-open-app="${appId}" data-pending-id="${item.id}">
+              <span class="notif-pending-title">${escapeHtml(item.title)}${item.critical ? ' · 重要' : ''}</span>
+              ${dl ? `<span class="notif-pending-deadline">${escapeHtml(dl)}</span>` : ''}
+            </button>
+          `;
+        }).join('')}
+      </div>
+    ` : '';
+
     const headerInner = `
-      <${hasMessages ? 'button' : 'div'} ${hasMessages ? `type="button" class="notif-app-header" data-toggle="${appId}" aria-expanded="${isOpen}"` : 'class="notif-app-header notif-app-header-static"'}>
+      <button type="button" class="notif-app-header" data-open-app="${appId}" aria-expanded="${isOpen}">
         <span class="notif-app-icon app-icon-${meta.color}">${meta.icon}</span>
         <div class="notif-app-summary">
           <span class="notif-app-name">${meta.name}${isMuted ? ' · 已静音' : ''}</span>
           ${!showProgress && preview ? `<span class="notif-app-preview">${escapeHtml(preview)}</span>` : ''}
         </div>
-        ${hasMessages && count > 1 ? `<span class="notif-app-count">${count}</span>` : ''}
-        ${hasMessages ? `<span class="notif-app-chevron ${isOpen ? 'open' : ''}">›</span>` : ''}
-      </${hasMessages ? 'button' : 'div'}>
+        ${(hasMessages && count > 1) || pendingCount ? `<span class="notif-app-count">${pendingCount || count}</span>` : ''}
+        ${hasMessages ? `<span class="notif-app-chevron ${isOpen ? 'open' : ''}" data-toggle="${tag}">›</span>` : ''}
+      </button>
       ${progressHtml}
+      ${pendingHtml}
     `;
 
-    const cardHeader = renderSwipeRow(`app:${appId}`, headerInner);
+    const cardHeader = renderSwipeRow(`app:${tag}`, headerInner);
 
     const bodyHtml = hasMessages ? `
       <div class="notif-app-body ${isOpen ? 'open' : ''}">
-        ${messages.map((m) => renderSwipeRow(`msg:${appId}:${m.id}`, `
+        ${messages.map((m) => renderSwipeRow(`msg:${tag}:${m.id}`, `
           <div class="notif-msg">
             <span class="notif-msg-time">${m.time}</span>
             <span class="notif-msg-text">${escapeHtml(m.text)}</span>
@@ -153,14 +231,23 @@ export function createNotifications({ listEl }) {
       </div>
     ` : '';
 
-    return `<div class="notif-app-card" data-app="${appId}">${cardHeader}${bodyHtml}</div>`;
+    return `<div class="notif-app-card" data-app="${tag}">${cardHeader}${bodyHtml}</div>`;
   }
 
   function bindCardEvents() {
-    listEl?.querySelectorAll('[data-toggle]').forEach((btn) => {
+    listEl?.querySelectorAll('[data-open-app]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
+        if (e.target.closest('.notif-swipe-row.revealed, .notif-app-chevron')) return;
+        e.stopPropagation();
+        onOpenApp?.(btn.dataset.openApp, btn.dataset.pendingId || null);
+      });
+    });
+
+    listEl?.querySelectorAll('[data-toggle]').forEach((chevron) => {
+      chevron.addEventListener('click', (e) => {
+        e.stopPropagation();
         if (e.target.closest('.notif-swipe-row.revealed')) return;
-        toggleExpand(btn.dataset.toggle);
+        toggleExpand(chevron.dataset.toggle);
       });
     });
 
@@ -199,7 +286,7 @@ export function createNotifications({ listEl }) {
       let activeId = null;
 
       row.addEventListener('pointerdown', (e) => {
-        if (e.target.closest('.notif-action-btn, [data-toggle]')) return;
+        if (e.target.closest('.notif-action-btn, [data-open-app], [data-toggle]')) return;
         startX = e.clientX;
         dragging = true;
         activeId = e.pointerId;
@@ -249,9 +336,7 @@ export function createNotifications({ listEl }) {
     });
   }
 
-  function clearBadge() {}
-
-  return { add, render, clearBadge, setFocusProgress };
+  return { add, render, setFocusProgress, onPendingChange, renderStatusIcons, bumpRecency };
 }
 
 function formatTime() {

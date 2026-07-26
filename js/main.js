@@ -9,6 +9,7 @@ import { createAIScript } from './ai.js';
 import { createActionSystem } from './actions.js';
 import { createShell } from './shell.js';
 import { createNotifications } from './notifications.js';
+import { createPendingQueue } from './pending.js';
 import { createInitialState, formatDateTimeHUD, LOCATION_NAMES } from './state.js';
 import { getSpeedConfig, stepSpeedLevel } from './speed.js';
 import { VERSION } from './version.js';
@@ -34,13 +35,33 @@ const els = {
   consoleVersion: document.getElementById('console-version'),
 };
 
-const notifications = createNotifications({
+const shell = createShell();
+const notebook = createNotebook();
+
+let eventUI;
+let notifications;
+let pending;
+
+pending = createPendingQueue({
+  getGameDate: () => state.date,
+  onChange: (item) => {
+    notifications?.onPendingChange(item);
+    eventUI?.renderAllPending();
+  },
+});
+
+notifications = createNotifications({
   listEl: document.getElementById('notif-list'),
+  statusIconsEl: document.getElementById('status-app-icons'),
+  onOpenApp: (appId, pendingId) => {
+    shell.openApp(appId);
+    eventUI?.renderAllPending();
+    if (pendingId) eventUI?.openPending(pendingId, state);
+  },
+  pending,
 });
 
 const output = createOutput(els.textStream, (text) => notifications.add(text));
-const notebook = createNotebook();
-const shell = createShell();
 
 function updateSpeedUI() {
   const cfg = getSpeedConfig(state.speedLevel);
@@ -82,7 +103,7 @@ function changeSpeed(delta) {
   if (!state.paused) lastTick = performance.now();
 }
 
-const eventUI = createEventUI({
+eventUI = createEventUI({
   modalEl: els.phoneModal,
   modalNarrative: els.modalNarrative,
   promptEl: els.eventPrompt,
@@ -90,6 +111,8 @@ const eventUI = createEventUI({
   choicesEl: els.eventChoices,
   output,
   notebook,
+  pending,
+  getState: () => state,
   onPause: () => setPaused(true),
   onResume: () => {
     state.paused = false;
@@ -99,6 +122,8 @@ const eventUI = createEventUI({
   onChoiceComplete: () => {
     updateHUD();
     focusSystem.renderPanel();
+    eventUI.renderAllPending();
+    notifications.render();
   },
   onModalChange: () => shell.refreshUI?.(),
 });
@@ -144,6 +169,7 @@ function tickHour() {
     dayCycle.processDayEnd();
     updateHUD();
     focusSystem.renderPanel();
+    eventUI.renderAllPending();
   }
 }
 
@@ -188,4 +214,6 @@ window.addEventListener('pageshow', (e) => {
 
 showOpening();
 focusSystem.showStarterChoice();
+eventUI.renderAllPending();
+notifications.renderStatusIcons();
 requestAnimationFrame(gameLoop);

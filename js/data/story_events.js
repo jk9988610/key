@@ -6,6 +6,7 @@ export default {
   STORY_RHINELAND_FALLOUT: {
     id: 'STORY_RHINELAND_FALLOUT',
     critical: true,
+    deadlineDays: 21,
     narrative: [
       '「他们除了抗议还会什么？」',
       '办公室里有人笑了，笑声里有紧绷。',
@@ -18,6 +19,7 @@ export default {
   STORY_SCHUSCHNIG: {
     id: 'STORY_SCHUSCHNIG',
     critical: true,
+    deadlineDays: 14,
     narrative: [
       '奥地利总理来了。他比照片上更矮，手在发抖。',
       '「德国不会干涉奥地利内政。」我说。我说得很慢。',
@@ -42,6 +44,7 @@ export default {
   STORY_MUNICH: {
     id: 'STORY_MUNICH',
     critical: true,
+    deadlineDays: 21,
     narrative: [
       '张伯伦把雨伞放在门边。慕尼黑的气氛闷热。',
       '他问我：「这会是您最后的领土要求吗？」',
