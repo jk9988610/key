@@ -1,7 +1,8 @@
 const HOME_PAGE_COUNT = 2;
 const DEFAULT_HOME_PAGE = 1;
-const EDGE_BACK_THRESHOLD = 24;
-const EDGE_ZONE = 52;
+const EDGE_BACK_THRESHOLD = 16;
+const EDGE_ZONE_MIN = 88;
+const EDGE_ZONE_RATIO = 0.2;
 const SWIPE_THRESHOLD = 48;
 const SWIPE_VELOCITY = 0.35;
 
@@ -9,8 +10,6 @@ export function createShell() {
   const home = document.getElementById('app-home');
   const phoneDevice = document.getElementById('phone-device');
   const phoneFrame = document.getElementById('phone-frame');
-  const bezelLeft = document.getElementById('edge-back-left');
-  const bezelRight = document.getElementById('edge-back-right');
   const statusBar = document.getElementById('status-bar');
   const shade = document.getElementById('notification-shade');
   const shadeBackdrop = document.getElementById('shade-backdrop');
@@ -107,10 +106,18 @@ export function createShell() {
   }
 
   function updateEdgeBackUI() {
-    const active = canEdgeBack();
-    phoneDevice?.classList.toggle('can-edge-back', active);
-    bezelLeft?.classList.toggle('bezel-inactive', !active);
-    bezelRight?.classList.toggle('bezel-inactive', !active);
+    phoneDevice?.classList.toggle('can-edge-back', canEdgeBack());
+    clearEdgeActive();
+  }
+
+  function clearEdgeActive() {
+    phoneFrame?.classList.remove('edge-back-left-active', 'edge-back-right-active');
+  }
+
+  function setEdgeActive(side) {
+    if (!phoneFrame) return;
+    phoneFrame.classList.toggle('edge-back-left-active', side === 'left');
+    phoneFrame.classList.toggle('edge-back-right-active', side === 'right');
   }
 
   function syncPagerTransform(animate) {
@@ -348,17 +355,28 @@ export function createShell() {
 
     let gesture = null;
 
+    function getEdgeZone() {
+      const width = phoneFrame.getBoundingClientRect().width;
+      return Math.max(EDGE_ZONE_MIN, Math.round(width * EDGE_ZONE_RATIO));
+    }
+
+    function syncEdgeZoneCss() {
+      phoneFrame?.style.setProperty('--edge-zone-w', `${getEdgeZone()}px`);
+    }
+
+    syncEdgeZoneCss();
+    window.addEventListener('resize', syncEdgeZoneCss);
+
     function frameX(clientX) {
       const rect = phoneFrame.getBoundingClientRect();
       return { x: clientX - rect.left, width: rect.width };
     }
 
-    function detectSide(target, clientX) {
-      if (target?.closest?.('#edge-back-left')) return 'left';
-      if (target?.closest?.('#edge-back-right')) return 'right';
+    function detectSideByX(clientX) {
+      const edgeZone = getEdgeZone();
       const { x, width } = frameX(clientX);
-      if (x <= EDGE_ZONE) return 'left';
-      if (x >= width - EDGE_ZONE) return 'right';
+      if (x <= edgeZone) return 'left';
+      if (x >= width - edgeZone) return 'right';
       return null;
     }
 
@@ -367,25 +385,29 @@ export function createShell() {
       if (e.button !== undefined && e.button !== 0) return;
       if (e.target.closest('#status-bar, #notification-shade, .phone-modal, .status-app-icons, .shade-app-icons')) return;
 
-      const side = detectSide(e.target, e.clientX);
+      const side = detectSideByX(e.clientX);
       gesture = {
         side,
         startX: e.clientX,
         active: Boolean(side),
         pointerId: e.pointerId,
       };
+      if (side) setEdgeActive(side);
     }
 
     function onPointerMove(e) {
       if (!gesture || e.pointerId !== gesture.pointerId || !canEdgeBack()) return;
 
       if (!gesture.active) {
-        const side = detectSide(e.target, e.clientX);
+        const side = detectSideByX(e.clientX);
         if (side) {
           gesture.active = true;
           gesture.side = side;
           gesture.startX = e.clientX;
+          setEdgeActive(side);
         }
+      } else {
+        setEdgeActive(gesture.side);
       }
     }
 
@@ -398,12 +420,18 @@ export function createShell() {
         if (towardCenter) navigateBack();
       }
       gesture = null;
+      clearEdgeActive();
+    }
+
+    function onPointerCancel() {
+      gesture = null;
+      clearEdgeActive();
     }
 
     phoneDevice.addEventListener('pointerdown', onPointerDown, { passive: true, capture: true });
     phoneDevice.addEventListener('pointermove', onPointerMove, { passive: true, capture: true });
     phoneDevice.addEventListener('pointerup', onPointerUp, { passive: true, capture: true });
-    phoneDevice.addEventListener('pointercancel', () => { gesture = null; }, { capture: true });
+    phoneDevice.addEventListener('pointercancel', onPointerCancel, { capture: true });
   }
 
   createEdgeBackSwipe();
