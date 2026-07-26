@@ -12,7 +12,7 @@ import { createNotifications } from './notifications.js';
 import { createPendingQueue } from './pending.js';
 import { createInitialState, formatDateTimeHUD, LOCATION_NAMES } from './state.js';
 import { getSpeedConfig, stepSpeedLevel } from './speed.js';
-import { VERSION } from './version.js';
+import { getVersion } from './version.js?v=0.8.4';
 
 const state = createInitialState();
 
@@ -199,8 +199,8 @@ focusSystem.renderPanel();
 updateHUD();
 
 if (els.textStream) els.textStream.innerHTML = '';
-if (els.consoleVersion) els.consoleVersion.textContent = VERSION;
-output.append(`[SYS] 元首办公室 ${VERSION} 已就绪`, 'sys');
+if (els.consoleVersion) els.consoleVersion.textContent = getVersion();
+output.append(`[SYS] 元首办公室 ${getVersion()} 已就绪`, 'sys');
 
 shell.showHome();
 
@@ -209,7 +209,7 @@ window.addEventListener('pageshow', (e) => {
   shell.showHome();
   if (els.textStream) {
     els.textStream.innerHTML = '';
-    output.append(`[SYS] 元首办公室 ${VERSION} 已就绪`, 'sys');
+    output.append(`[SYS] 元首办公室 ${getVersion()} 已就绪`, 'sys');
   }
 });
 
