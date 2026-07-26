@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-  <meta name="game-version" content="v0.8.5">
+  <meta name="game-version" content="v0.8.6">
   <title>元首办公室</title>
-  <link rel="stylesheet" href="css/style.css?v=0.8.5">
+  <link rel="stylesheet" href="css/style.css?v=0.8.6">
 </head>
 <body>
   <div id="viewport">
     <div id="phone-device">
-      <div id="phone-frame">
+      <div class="phone-bezel phone-bezel-top" aria-hidden="true"></div>
+      <div class="phone-device-body">
+        <div id="edge-back-left" class="phone-bezel phone-bezel-side" aria-label="左侧滑返回"></div>
+        <div id="phone-frame">
       <!-- 状态栏：下拉展开通知 -->
       <header id="status-bar" title="下拉展开通知中心">
         <div class="status-pull-hint" aria-hidden="true"></div>
@@ -168,7 +171,10 @@
           </div>
         </div>
       </section>
+        </div>
+        <div id="edge-back-right" class="phone-bezel phone-bezel-side" aria-label="右侧滑返回"></div>
       </div>
+      <div class="phone-bezel phone-bezel-bottom" aria-hidden="true"></div>
     </div>
   </div>
 
@@ -178,6 +184,6 @@
     <span id="cell-intel"></span>
   </div>
 
-  <script type="module" src="js/main.js?v=0.8.5"></script>
+  <script type="module" src="js/main.js?v=0.8.6"></script>
 </body>
 </html>

@@ -1,9 +1,6 @@
 const HOME_PAGE_COUNT = 2;
 const DEFAULT_HOME_PAGE = 1;
-const EDGE_BACK_THRESHOLD = 18;
-/** 逻辑边框目标宽度（px），实际会按屏幕宽度收窄 */
-const LOGICAL_EDGE_TARGET = 96;
-const MIN_CENTER_WIDTH = 100;
+const EDGE_BACK_THRESHOLD = 24;
 const SWIPE_THRESHOLD = 48;
 const SWIPE_VELOCITY = 0.35;
 
@@ -11,7 +8,8 @@ export function createShell() {
   const home = document.getElementById('app-home');
   const phoneDevice = document.getElementById('phone-device');
   const phoneFrame = document.getElementById('phone-frame');
-  const mainScreen = document.getElementById('main-screen');
+  const bezelLeft = document.getElementById('edge-back-left');
+  const bezelRight = document.getElementById('edge-back-right');
   const statusBar = document.getElementById('status-bar');
   const shade = document.getElementById('notification-shade');
   const shadeBackdrop = document.getElementById('shade-backdrop');
@@ -108,7 +106,10 @@ export function createShell() {
   }
 
   function updateEdgeBackUI() {
-    phoneDevice?.classList.toggle('can-edge-back', canEdgeBack());
+    const active = canEdgeBack();
+    phoneDevice?.classList.toggle('can-edge-back', active);
+    bezelLeft?.classList.toggle('bezel-disabled', !active);
+    bezelRight?.classList.toggle('bezel-disabled', !active);
   }
 
   function syncPagerTransform(animate) {
@@ -342,119 +343,38 @@ export function createShell() {
   window.addEventListener('mouseup', onPullEnd);
 
   function createEdgeBackSwipe() {
-    if (!phoneFrame || !mainScreen) return;
+    const edges = [
+      { el: bezelLeft, side: 'left' },
+      { el: bezelRight, side: 'right' },
+    ];
 
-    let gesture = null;
+    edges.forEach(({ el, side }) => {
+      if (!el) return;
 
-    function frameRect() {
-      return phoneFrame.getBoundingClientRect();
-    }
+      let startX = 0;
+      let activeId = null;
 
-    /** 逻辑大边框，但保证不超出屏幕且中间留出可操作区 */
-    function getEdgeWidth() {
-      const w = frameRect().width;
-      const maxEachSide = Math.floor(w * 0.26);
-      const reserveCenter = Math.max(MIN_CENTER_WIDTH, Math.floor(w * 0.36));
-      const fromCenter = Math.max(0, Math.floor((w - reserveCenter) / 2));
-      return Math.min(LOGICAL_EDGE_TARGET, maxEachSide, fromCenter);
-    }
+      el.addEventListener('pointerdown', (e) => {
+        if (!canEdgeBack()) return;
+        if (e.button !== undefined && e.button !== 0) return;
+        startX = e.clientX;
+        activeId = e.pointerId;
+        el.setPointerCapture(e.pointerId);
+      });
 
-    function syncEdgeWidth() {
-      phoneFrame.style.setProperty('--edge-logical-w', `${getEdgeWidth()}px`);
-    }
-
-    function inFrame(clientX, clientY) {
-      const r = frameRect();
-      return clientX >= r.left && clientX <= r.right
-        && clientY >= r.top && clientY <= r.bottom;
-    }
-
-    function sideAt(clientX) {
-      const r = frameRect();
-      const localX = clientX - r.left;
-      const edge = getEdgeWidth();
-      if (localX <= edge) return 'left';
-      if (localX >= r.width - edge) return 'right';
-      return null;
-    }
-
-    function isExcludedTarget(target) {
-      return Boolean(target?.closest?.(
-        '#btn-speed-down, #btn-speed-up, #btn-speed-toggle, .phone-modal:not([hidden]), .notif-action-btn',
-      ));
-    }
-
-    function tryCapture(pointerId) {
-      try { phoneFrame.setPointerCapture(pointerId); } catch { /* noop */ }
-    }
-
-    function releaseCapture(pointerId) {
-      try { phoneFrame.releasePointerCapture(pointerId); } catch { /* noop */ }
-    }
-
-    function onPointerDown(e) {
-      if (!canEdgeBack()) return;
-      if (e.button !== undefined && e.button !== 0) return;
-      if (!inFrame(e.clientX, e.clientY)) return;
-      if (isExcludedTarget(e.target)) return;
-
-      const side = sideAt(e.clientX);
-      gesture = {
-        pointerId: e.pointerId,
-        startX: e.clientX,
-        startY: e.clientY,
-        anchorX: e.clientX,
-        side,
-        engaged: Boolean(side),
+      const onFinish = (e) => {
+        if (e.pointerId !== activeId) return;
+        const dx = e.clientX - startX;
+        const towardCenter = (side === 'left' && dx > EDGE_BACK_THRESHOLD)
+          || (side === 'right' && dx < -EDGE_BACK_THRESHOLD);
+        if (towardCenter) navigateBack();
+        activeId = null;
+        try { el.releasePointerCapture(e.pointerId); } catch { /* noop */ }
       };
-      if (side) tryCapture(e.pointerId);
-    }
 
-    function onPointerMove(e) {
-      if (!gesture || e.pointerId !== gesture.pointerId || !canEdgeBack()) return;
-
-      if (!gesture.engaged) {
-        const side = sideAt(e.clientX);
-        if (side) {
-          gesture.engaged = true;
-          gesture.side = side;
-          gesture.anchorX = e.clientX;
-          tryCapture(e.pointerId);
-        }
-      }
-    }
-
-    function onPointerUp(e) {
-      if (!gesture || e.pointerId !== gesture.pointerId) return;
-
-      if (gesture.engaged && gesture.side) {
-        const dx = e.clientX - gesture.anchorX;
-        const dy = e.clientY - gesture.startY;
-        const horizontal = Math.abs(dx) >= EDGE_BACK_THRESHOLD
-          && Math.abs(dx) > Math.abs(dy) * 0.45;
-        const towardCenter = (gesture.side === 'left' && dx > 0)
-          || (gesture.side === 'right' && dx < 0);
-        if (horizontal && towardCenter) navigateBack();
-      }
-
-      releaseCapture(e.pointerId);
-      gesture = null;
-    }
-
-    function onPointerCancel(e) {
-      if (gesture && e.pointerId === gesture.pointerId) {
-        releaseCapture(e.pointerId);
-        gesture = null;
-      }
-    }
-
-    phoneFrame.addEventListener('pointerdown', onPointerDown, { capture: true });
-    phoneFrame.addEventListener('pointermove', onPointerMove, { capture: true });
-    phoneFrame.addEventListener('pointerup', onPointerUp, { capture: true });
-    phoneFrame.addEventListener('pointercancel', onPointerCancel, { capture: true });
-
-    syncEdgeWidth();
-    window.addEventListener('resize', syncEdgeWidth);
+      el.addEventListener('pointerup', onFinish);
+      el.addEventListener('pointercancel', () => { activeId = null; });
+    });
   }
 
   createEdgeBackSwipe();
