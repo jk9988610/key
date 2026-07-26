@@ -74,7 +74,11 @@ html, body {
   background: transparent;
   touch-action: none;
   user-select: none;
-  pointer-events: none;
+  pointer-events: auto;
+}
+
+#phone-device.can-edge-back .phone-bezel:not(.bezel-inactive) {
+  background: rgba(10, 132, 255, 0.1);
 }
 
 .phone-bezel.bezel-inactive {
@@ -126,12 +130,30 @@ html, body {
 
 .status-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 4px;
   height: calc(var(--status-h) - 8px);
   width: 100%;
   padding: 0 2px;
+}
+
+.status-leading {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.status-leading .status-datetime {
+  flex-shrink: 0;
+}
+
+.status-leading .status-app-icons {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .status-datetime {
@@ -273,6 +295,7 @@ html, body {
   align-items: center;
   justify-content: center;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .status-app-icon:active {
@@ -280,20 +303,20 @@ html, body {
   opacity: 0.85;
 }
 
-.status-app-badge {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  min-width: 12px;
-  height: 12px;
-  padding: 0 2px;
-  border-radius: 6px;
-  background: var(--red);
-  color: #fff;
-  font-size: 8px;
-  font-weight: 700;
-  line-height: 12px;
-  text-align: center;
+.shade-app-icons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.shade-app-icons .status-app-icon {
+  width: 36px;
+  height: 36px;
+  font-size: 15px;
+  border-radius: 10px;
 }
 
 .app-pending-list {

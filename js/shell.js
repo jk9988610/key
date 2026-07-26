@@ -1,12 +1,13 @@
 const HOME_PAGE_COUNT = 2;
 const DEFAULT_HOME_PAGE = 1;
-const EDGE_BACK_THRESHOLD = 40;
-const EDGE_ZONE = 28;
+const EDGE_BACK_THRESHOLD = 24;
+const EDGE_ZONE = 52;
 const SWIPE_THRESHOLD = 48;
 const SWIPE_VELOCITY = 0.35;
 
 export function createShell() {
   const home = document.getElementById('app-home');
+  const phoneDevice = document.getElementById('phone-device');
   const phoneFrame = document.getElementById('phone-frame');
   const bezelLeft = document.getElementById('edge-back-left');
   const bezelRight = document.getElementById('edge-back-right');
@@ -107,6 +108,7 @@ export function createShell() {
 
   function updateEdgeBackUI() {
     const active = canEdgeBack();
+    phoneDevice?.classList.toggle('can-edge-back', active);
     bezelLeft?.classList.toggle('bezel-inactive', !active);
     bezelRight?.classList.toggle('bezel-inactive', !active);
   }
@@ -264,19 +266,29 @@ export function createShell() {
 
   function createShadeDismiss() {
     if (!shade) return;
-    const notifList = document.getElementById('notif-list');
+
     let startY = 0;
     let startX = 0;
     let activeId = null;
-    let fromList = false;
+
+    function isInteractiveTarget(target) {
+      return Boolean(target.closest(
+        '.notif-app-card, .notif-swipe-row, .notif-action-btn, .shade-app-icons button, button, a',
+      ));
+    }
+
+    shade.addEventListener('click', (e) => {
+      if (!shade.classList.contains('open')) return;
+      if (isInteractiveTarget(e.target)) return;
+      closeShade();
+    });
 
     shade.addEventListener('pointerdown', (e) => {
       if (!shade.classList.contains('open')) return;
-      if (e.target.closest('.notif-swipe-row.revealed, .notif-action-btn')) return;
+      if (e.target.closest('.notif-action-btn')) return;
       startY = e.clientY;
       startX = e.clientX;
       activeId = e.pointerId;
-      fromList = Boolean(e.target.closest('.notif-list'));
     });
 
     shade.addEventListener('pointerup', (e) => {
@@ -284,17 +296,11 @@ export function createShell() {
       if (!shade.classList.contains('open')) return;
       const dy = e.clientY - startY;
       const dx = e.clientX - startX;
-      const listAtTop = !notifList || notifList.scrollTop <= 2;
-      const canDismiss = !fromList || listAtTop;
-      if (canDismiss && dy < -40 && Math.abs(dy) > Math.abs(dx)) closeShade();
+      if (dy < -28 && Math.abs(dy) > Math.abs(dx)) closeShade();
       activeId = null;
-      fromList = false;
     });
 
-    shade.addEventListener('pointercancel', () => {
-      activeId = null;
-      fromList = false;
-    });
+    shade.addEventListener('pointercancel', () => { activeId = null; });
   }
 
   createShadeDismiss();
@@ -338,59 +344,66 @@ export function createShell() {
   window.addEventListener('mouseup', onPullEnd);
 
   function createEdgeBackSwipe() {
-    if (!phoneFrame) return;
+    if (!phoneFrame || !phoneDevice) return;
 
     let gesture = null;
 
-    phoneFrame.addEventListener('pointerdown', (e) => {
+    function frameX(clientX) {
+      const rect = phoneFrame.getBoundingClientRect();
+      return { x: clientX - rect.left, width: rect.width };
+    }
+
+    function detectSide(target, clientX) {
+      if (target?.closest?.('#edge-back-left')) return 'left';
+      if (target?.closest?.('#edge-back-right')) return 'right';
+      const { x, width } = frameX(clientX);
+      if (x <= EDGE_ZONE) return 'left';
+      if (x >= width - EDGE_ZONE) return 'right';
+      return null;
+    }
+
+    function onPointerDown(e) {
       if (!canEdgeBack()) return;
       if (e.button !== undefined && e.button !== 0) return;
+      if (e.target.closest('#status-bar, #notification-shade, .phone-modal, .status-app-icons, .shade-app-icons')) return;
 
-      const rect = phoneFrame.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      let side = null;
-      if (x <= EDGE_ZONE) side = 'left';
-      else if (x >= rect.width - EDGE_ZONE) side = 'right';
-
+      const side = detectSide(e.target, e.clientX);
       gesture = {
         side,
         startX: e.clientX,
-        crossed: Boolean(side),
+        active: Boolean(side),
         pointerId: e.pointerId,
       };
-    }, { passive: true });
+    }
 
-    phoneFrame.addEventListener('pointermove', (e) => {
+    function onPointerMove(e) {
       if (!gesture || e.pointerId !== gesture.pointerId || !canEdgeBack()) return;
 
-      const rect = phoneFrame.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-
-      if (!gesture.crossed) {
-        if (x <= EDGE_ZONE) {
-          gesture.crossed = true;
-          gesture.side = 'left';
-          gesture.startX = e.clientX;
-        } else if (x >= rect.width - EDGE_ZONE) {
-          gesture.crossed = true;
-          gesture.side = 'right';
+      if (!gesture.active) {
+        const side = detectSide(e.target, e.clientX);
+        if (side) {
+          gesture.active = true;
+          gesture.side = side;
           gesture.startX = e.clientX;
         }
       }
-    }, { passive: true });
+    }
 
-    phoneFrame.addEventListener('pointerup', (e) => {
+    function onPointerUp(e) {
       if (!gesture || e.pointerId !== gesture.pointerId) return;
-      if (gesture.crossed && gesture.side) {
+      if (gesture.active && gesture.side) {
         const dx = e.clientX - gesture.startX;
         const towardCenter = (gesture.side === 'left' && dx > EDGE_BACK_THRESHOLD)
           || (gesture.side === 'right' && dx < -EDGE_BACK_THRESHOLD);
         if (towardCenter) navigateBack();
       }
       gesture = null;
-    }, { passive: true });
+    }
 
-    phoneFrame.addEventListener('pointercancel', () => { gesture = null; });
+    phoneDevice.addEventListener('pointerdown', onPointerDown, { passive: true, capture: true });
+    phoneDevice.addEventListener('pointermove', onPointerMove, { passive: true, capture: true });
+    phoneDevice.addEventListener('pointerup', onPointerUp, { passive: true, capture: true });
+    phoneDevice.addEventListener('pointercancel', () => { gesture = null; }, { capture: true });
   }
 
   createEdgeBackSwipe();

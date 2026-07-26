@@ -53,6 +53,7 @@ pending = createPendingQueue({
 notifications = createNotifications({
   listEl: document.getElementById('notif-list'),
   statusIconsEl: document.getElementById('status-app-icons'),
+  shadeIconsEl: document.getElementById('shade-app-icons'),
   onOpenApp: (appId, pendingId) => {
     shell.openApp(appId);
     eventUI?.renderAllPending();
@@ -216,4 +217,5 @@ showOpening();
 focusSystem.showStarterChoice();
 eventUI.renderAllPending();
 notifications.renderStatusIcons();
+notifications.renderShadeIcons();
 requestAnimationFrame(gameLoop);

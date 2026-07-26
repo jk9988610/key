@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <title>元首办公室</title>
-  <link rel="stylesheet" href="css/style.css?v=0.8.0">
+  <link rel="stylesheet" href="css/style.css?v=0.8.1">
 </head>
 <body>
   <div id="viewport">
@@ -15,13 +15,15 @@
       <header id="status-bar" title="下拉展开通知中心">
         <div class="status-pull-hint" aria-hidden="true"></div>
         <div class="status-row">
-          <time class="status-datetime" id="date-display">1936/1/1 06:00</time>
+          <div class="status-leading">
+            <time class="status-datetime" id="date-display">1936/1/1 06:00</time>
+            <div id="status-app-icons" class="status-app-icons" hidden aria-label="待处理应用"></div>
+          </div>
           <div class="status-stats">
             <span class="status-chip" title="稳定">稳<span id="stability">75</span></span>
             <span class="status-chip war" title="战争支持">战<span id="war-support">30</span></span>
             <span class="status-chip pp" title="政治权力">政<span id="political-power">50</span></span>
           </div>
-          <div id="status-app-icons" class="status-app-icons" hidden aria-label="待处理应用"></div>
           <div class="status-speed-group">
             <button type="button" id="btn-speed-down" class="status-speed-btn" title="减速">−</button>
             <button type="button" id="btn-speed-toggle" class="status-speed-display" title="暂停/继续">I</button>
@@ -33,6 +35,7 @@
       <div id="shade-backdrop"></div>
       <aside id="notification-shade" aria-label="通知中心">
         <div class="shade-handle"></div>
+        <div id="shade-app-icons" class="shade-app-icons" hidden aria-label="应用快捷入口"></div>
         <div class="shade-header">通知中心</div>
         <div class="shade-stats">
           <span>紧张 <b id="tension">12</b>%</span>
@@ -50,7 +53,7 @@
               <div class="home-page home-page-console" data-page="0">
                 <header class="console-page-header">
                   <span>调试台</span>
-                  <span class="info-hint"><span id="console-version">v0.8.0</span> · SYS / DIP / FOC</span>
+                  <span class="info-hint"><span id="console-version">v0.8.1</span> · SYS / DIP / FOC</span>
                 </header>
                 <div id="text-stream" class="console-stream" aria-live="polite"></div>
               </div>
@@ -176,6 +179,6 @@
     <span id="cell-intel"></span>
   </div>
 
-  <script type="module" src="js/main.js?v=0.8.0"></script>
+  <script type="module" src="js/main.js?v=0.8.1"></script>
 </body>
 </html>

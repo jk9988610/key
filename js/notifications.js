@@ -11,20 +11,25 @@ const NOTIFY_META = {
 };
 
 const SWIPE_ACTION_W = 112;
+const STATUS_ICON_MAX = 5;
+const SHADE_ICON_MAX = 15;
 
-export function createNotifications({ listEl, statusIconsEl, onOpenApp, pending }) {
+export function createNotifications({ listEl, statusIconsEl, shadeIconsEl, onOpenApp, pending }) {
   const groups = {};
   const expanded = new Set();
   const muted = new Set();
-  const appRecency = {};
+  const activityOrder = [];
   let focusProgress = null;
   let msgIdSeq = 0;
   let revealedRow = null;
   const MAX_PER_GROUP = 20;
 
   function bumpRecency(tag) {
-    appRecency[tag] = Date.now();
+    const idx = activityOrder.indexOf(tag);
+    if (idx !== -1) activityOrder.splice(idx, 1);
+    activityOrder.unshift(tag);
     renderStatusIcons();
+    renderShadeIcons();
   }
 
   function ensureGroup(appId) {
@@ -55,6 +60,7 @@ export function createNotifications({ listEl, statusIconsEl, onOpenApp, pending 
       return;
     }
     renderStatusIcons();
+    renderShadeIcons();
     render();
   }
 
@@ -65,48 +71,51 @@ export function createNotifications({ listEl, statusIconsEl, onOpenApp, pending 
   }
 
   function getOrderedTags() {
-    const tags = new Set();
-    if (focusProgress) tags.add('foc');
+    const active = new Set();
+    if (focusProgress) active.add('foc');
     Object.keys(groups).forEach((id) => {
-      if (groups[id].length) tags.add(id);
+      if (groups[id].length) active.add(id);
     });
     pending?.getAppOrder().forEach((appId) => {
       const tag = APP_META[appId]?.tag;
-      if (tag) tags.add(tag);
+      if (tag) active.add(tag);
     });
-    return [...tags].sort((a, b) => (appRecency[b] || 0) - (appRecency[a] || 0));
+    return activityOrder.filter((tag) => active.has(tag));
   }
 
-  function renderStatusIcons() {
-    if (!statusIconsEl) return;
-    const order = getOrderedTags();
-    if (!order.length) {
-      statusIconsEl.innerHTML = '';
-      statusIconsEl.hidden = true;
+  function renderIconButtons(container, tags) {
+    if (!container) return;
+    if (!tags.length) {
+      container.innerHTML = '';
+      container.hidden = true;
       return;
     }
 
-    statusIconsEl.hidden = false;
-    statusIconsEl.innerHTML = order.map((tag) => {
+    container.hidden = false;
+    container.innerHTML = tags.map((tag) => {
       const meta = NOTIFY_META[tag];
       const appId = TAG_TO_APP[tag];
-      const pendingCount = pending?.getForApp(appId).length || 0;
-      const msgCount = groups[tag]?.length || 0;
-      const badge = pendingCount || msgCount;
       return `
         <button type="button" class="status-app-icon app-icon-${meta.color}" data-app="${appId}" title="${meta.name}">
           ${meta.icon}
-          ${badge > 0 ? `<span class="status-app-badge">${badge > 9 ? '9+' : badge}</span>` : ''}
         </button>
       `;
     }).join('');
 
-    statusIconsEl.querySelectorAll('[data-app]').forEach((btn) => {
+    container.querySelectorAll('[data-app]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         onOpenApp?.(btn.dataset.app);
       });
     });
+  }
+
+  function renderStatusIcons() {
+    renderIconButtons(statusIconsEl, getOrderedTags().slice(0, STATUS_ICON_MAX));
+  }
+
+  function renderShadeIcons() {
+    renderIconButtons(shadeIconsEl, getOrderedTags().slice(0, SHADE_ICON_MAX));
   }
 
   function toggleExpand(appId) {
@@ -155,6 +164,7 @@ export function createNotifications({ listEl, statusIconsEl, onOpenApp, pending 
     if (!order.length) {
       listEl.innerHTML = '<p class="notif-empty">暂无通知</p>';
       renderStatusIcons();
+      renderShadeIcons();
       return;
     }
 
@@ -162,6 +172,7 @@ export function createNotifications({ listEl, statusIconsEl, onOpenApp, pending 
     bindCardEvents();
     bindSwipeRows();
     renderStatusIcons();
+    renderShadeIcons();
   }
 
   function renderAppCard(tag, messages) {
@@ -336,7 +347,7 @@ export function createNotifications({ listEl, statusIconsEl, onOpenApp, pending 
     });
   }
 
-  return { add, render, setFocusProgress, onPendingChange, renderStatusIcons, bumpRecency };
+  return { add, render, setFocusProgress, onPendingChange, renderStatusIcons, renderShadeIcons, bumpRecency };
 }
 
 function formatTime() {
