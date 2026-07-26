@@ -33,7 +33,7 @@ html, body {
   overflow: hidden;
 }
 
-/* ── 视口：手机随屏幕缩放 ── */
+/* ── 视口：手机随屏幕缩放，与边缘留白 ── */
 #viewport {
   display: flex;
   align-items: center;
@@ -41,27 +41,74 @@ html, body {
   width: 100%;
   height: 100dvh;
   padding:
-    max(8px, var(--safe-top))
-    max(8px, env(safe-area-inset-right, 0px))
-    max(8px, var(--safe-bottom))
-    max(8px, env(safe-area-inset-left, 0px));
+    max(16px, var(--safe-top))
+    max(20px, env(safe-area-inset-right, 0px))
+    max(16px, var(--safe-bottom))
+    max(20px, env(safe-area-inset-left, 0px));
 }
 
-/* ── 手机外框 ── */
+/* ── 手机机身（含侧边框，用于边缘滑动返回） ── */
+#phone-device {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex-shrink: 0;
+  padding: 5px;
+  gap: 3px;
+  background: linear-gradient(165deg, #2a2a2e 0%, #121214 45%, #0a0a0c 100%);
+  border-radius: calc(var(--phone-radius) + 6px);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.06),
+    0 28px 90px rgba(0,0,0,0.7),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  height: min(
+    calc(100dvh - 32px - var(--safe-top) - var(--safe-bottom)),
+    calc((100vw - 40px) * 17.5 / 9)
+  );
+  max-height: calc(100dvh - 32px - var(--safe-top) - var(--safe-bottom));
+}
+
+.phone-bezel {
+  width: clamp(14px, 4vw, 20px);
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.35);
+  touch-action: none;
+  user-select: none;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+#phone-device.can-edge-back .phone-bezel:not(.bezel-inactive) {
+  cursor: pointer;
+  background: rgba(10, 132, 255, 0.08);
+}
+
+#phone-device.can-edge-back .phone-bezel:not(.bezel-inactive):hover {
+  background: rgba(10, 132, 255, 0.16);
+}
+
+.phone-bezel.bezel-active {
+  background: rgba(10, 132, 255, 0.32) !important;
+}
+
+.phone-bezel.bezel-inactive {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* ── 手机屏幕区域 ── */
 #phone-frame {
   display: flex;
   flex-direction: column;
-  width: min(100%, calc((100dvh - 16px - var(--safe-top) - var(--safe-bottom)) * 9 / 17.5));
-  height: min(calc(100dvh - 16px - var(--safe-top) - var(--safe-bottom)), calc(100vw * 17.5 / 9));
-  max-width: 580px;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: min(580px, calc((100dvh - 32px - var(--safe-top) - var(--safe-bottom)) * 9 / 17.5));
+  height: 100%;
   background: var(--phone-bg);
   position: relative;
   overflow: hidden;
   border-radius: var(--phone-radius);
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.08),
-    0 24px 80px rgba(0,0,0,0.65);
-  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
 }
 
 /* ── 状态栏（下拉展开通知） ── */
@@ -96,10 +143,10 @@ html, body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   height: calc(var(--status-h) - 8px);
   width: 100%;
-  padding: 0 4px;
+  padding: 0 2px;
 }
 
 .status-datetime {
@@ -121,13 +168,43 @@ html, body {
   flex-shrink: 0;
 }
 
-.status-speed {
+.status-speed-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   flex-shrink: 0;
-  min-width: 32px;
+}
+
+.status-speed-btn {
+  width: 22px;
   height: 22px;
-  padding: 0 6px;
+  padding: 0;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.status-speed-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.status-speed-btn:not(:disabled):active {
+  background: var(--border);
+}
+
+.status-speed-display {
+  min-width: 28px;
+  height: 22px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 4px;
   background: var(--surface-2);
   color: var(--green);
   font-size: 11px;
@@ -137,17 +214,16 @@ html, body {
   touch-action: manipulation;
 }
 
-.status-speed.is-paused {
+.status-speed-display.is-paused {
   color: var(--yellow);
-  font-size: 10px;
-  font-weight: 600;
+  opacity: 0.85;
 }
 
-.status-speed.speed-4 {
+.status-speed-display.speed-4 {
   color: var(--orange);
 }
 
-.status-speed:active {
+.status-speed-display:active {
   opacity: 0.75;
 }
 
@@ -767,9 +843,12 @@ html, body {
 .page-dots .dot[data-page="0"].active { background: var(--green); }
 
 @media (orientation: landscape) and (max-height: 520px) {
+  #phone-device {
+    height: min(calc(100dvh - 24px), calc((100vw - 40px) * 17.5 / 9));
+    max-height: calc(100dvh - 24px);
+  }
+
   #phone-frame {
-    width: min(calc((100dvh - 16px) * 9 / 17.5), 50vw);
-    height: min(calc(100dvh - 16px), calc(50vw * 17.5 / 9));
-    max-width: none;
+    width: min(520px, calc((100dvh - 24px) * 9 / 17.5));
   }
 }

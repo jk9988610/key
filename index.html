@@ -4,11 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <title>元首办公室</title>
-  <link rel="stylesheet" href="css/style.css?v=0.7.1">
+  <link rel="stylesheet" href="css/style.css?v=0.7.2">
 </head>
 <body>
   <div id="viewport">
-    <div id="phone-frame">
+    <div id="phone-device">
+      <div id="edge-back-left" class="phone-bezel" title="侧滑返回" aria-label="左侧滑返回"></div>
+      <div id="phone-frame">
       <!-- 状态栏：下拉展开通知 -->
       <header id="status-bar" title="下拉展开通知中心">
         <div class="status-pull-hint" aria-hidden="true"></div>
@@ -19,7 +21,11 @@
             <span class="status-chip war" title="战争支持">战<span id="war-support">30</span></span>
             <span class="status-chip pp" title="政治权力">政<span id="political-power">50</span></span>
           </div>
-          <button type="button" id="btn-speed" class="status-speed" title="切换游戏速度">I</button>
+          <div class="status-speed-group">
+            <button type="button" id="btn-speed-down" class="status-speed-btn" title="减速">−</button>
+            <button type="button" id="btn-speed-toggle" class="status-speed-display" title="暂停/继续">I</button>
+            <button type="button" id="btn-speed-up" class="status-speed-btn" title="加速">+</button>
+          </div>
         </div>
       </header>
 
@@ -43,7 +49,7 @@
               <div class="home-page home-page-console" data-page="0">
                 <header class="console-page-header">
                   <span>调试台</span>
-                  <span class="info-hint"><span id="console-version">v0.7.1</span> · SYS / DIP / FOC</span>
+                  <span class="info-hint"><span id="console-version">v0.7.2</span> · SYS / DIP / FOC</span>
                 </header>
                 <div id="text-stream" class="console-stream" aria-live="polite"></div>
               </div>
@@ -157,6 +163,8 @@
           </div>
         </div>
       </section>
+      </div>
+      <div id="edge-back-right" class="phone-bezel" title="侧滑返回" aria-label="右侧滑返回"></div>
     </div>
   </div>
 
@@ -166,6 +174,6 @@
     <span id="cell-intel"></span>
   </div>
 
-  <script type="module" src="js/main.js?v=0.7.1"></script>
+  <script type="module" src="js/main.js?v=0.7.2"></script>
 </body>
 </html>

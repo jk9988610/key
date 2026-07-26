@@ -9,7 +9,7 @@ import { createAIScript } from './ai.js';
 import { createActionSystem } from './actions.js';
 import { createShell, createNotifications } from './shell.js';
 import { createInitialState, formatDateTimeHUD, LOCATION_NAMES } from './state.js';
-import { cycleSpeedLevel, getSpeedConfig } from './speed.js';
+import { getSpeedConfig, stepSpeedLevel } from './speed.js';
 import { VERSION } from './version.js';
 
 const state = createInitialState();
@@ -17,7 +17,9 @@ const state = createInitialState();
 const els = {
   textStream: document.getElementById('text-stream'),
   dateDisplay: document.getElementById('date-display'),
-  btnSpeed: document.getElementById('btn-speed'),
+  btnSpeedToggle: document.getElementById('btn-speed-toggle'),
+  btnSpeedUp: document.getElementById('btn-speed-up'),
+  btnSpeedDown: document.getElementById('btn-speed-down'),
   stability: document.getElementById('stability'),
   tension: document.getElementById('tension'),
   warSupport: document.getElementById('war-support'),
@@ -41,10 +43,13 @@ const shell = createShell();
 
 function updateSpeedUI() {
   const cfg = getSpeedConfig(state.speedLevel);
-  if (!els.btnSpeed) return;
-  els.btnSpeed.textContent = state.paused ? '暂停' : cfg.label;
-  els.btnSpeed.classList.toggle('is-paused', state.paused);
-  els.btnSpeed.classList.toggle('speed-4', !state.paused && state.speedLevel === 4);
+  if (els.btnSpeedToggle) {
+    els.btnSpeedToggle.textContent = cfg.label;
+    els.btnSpeedToggle.classList.toggle('is-paused', state.paused);
+    els.btnSpeedToggle.classList.toggle('speed-4', !state.paused && state.speedLevel === 4);
+  }
+  if (els.btnSpeedDown) els.btnSpeedDown.disabled = state.speedLevel <= 1;
+  if (els.btnSpeedUp) els.btnSpeedUp.disabled = state.speedLevel >= 4;
 }
 
 function updateHUD() {
@@ -60,20 +65,18 @@ function updateHUD() {
 
 function setPaused(paused) {
   state.paused = paused;
-  if (!paused) {
-    state.speedLevel = Math.max(1, state.speedLevel || 1);
-  } else {
-    state.speedLevel = 0;
-  }
   updateSpeedUI();
   if (!paused) lastTick = performance.now();
 }
 
-function cycleSpeed() {
+function togglePause() {
   if (state.awaitingChoice) return;
-  state.speedLevel = cycleSpeedLevel(state.speedLevel);
-  const cfg = getSpeedConfig(state.speedLevel);
-  state.paused = cfg.paused;
+  setPaused(!state.paused);
+}
+
+function changeSpeed(delta) {
+  if (state.awaitingChoice) return;
+  state.speedLevel = stepSpeedLevel(state.speedLevel, delta);
   updateSpeedUI();
   if (!state.paused) lastTick = performance.now();
 }
@@ -86,9 +89,8 @@ const eventUI = createEventUI({
   choicesEl: els.eventChoices,
   output,
   notebook,
-  onPause: setPaused,
+  onPause: () => setPaused(true),
   onResume: () => {
-    state.speedLevel = Math.max(1, state.speedLevel || 1);
     state.paused = false;
     updateSpeedUI();
     lastTick = performance.now();
@@ -97,6 +99,7 @@ const eventUI = createEventUI({
     updateHUD();
     focusSystem.renderPanel();
   },
+  onModalChange: () => shell.refreshUI?.(),
 });
 
 const storySystem = createStorySystem({
@@ -146,8 +149,7 @@ function tickHour() {
 function gameLoop(timestamp) {
   if (!state.paused && !state.awaitingChoice) {
     const cfg = getSpeedConfig(state.speedLevel);
-    const ms = cfg.msPerHour || 1200;
-    if (timestamp - lastTick >= ms) {
+    if (timestamp - lastTick >= cfg.msPerHour) {
       tickHour();
       lastTick = timestamp;
     }
@@ -155,7 +157,9 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
-els.btnSpeed?.addEventListener('click', cycleSpeed);
+els.btnSpeedToggle?.addEventListener('click', togglePause);
+els.btnSpeedUp?.addEventListener('click', () => changeSpeed(1));
+els.btnSpeedDown?.addEventListener('click', () => changeSpeed(-1));
 
 function showOpening() {
   notebook.add('diplomacy', '法国:-40 奥地利:55', '1936-01-01');

@@ -1,18 +1,20 @@
-/** 钢铁雄心4 速度档位（单按钮循环：暂停 → I → II → III → IV） */
+/** 钢铁雄心4 速度档位 I–IV（暂停与速度分离） */
 export const HOI4_SPEEDS = [
-  { level: 0, label: '暂停', paused: true, msPerHour: null },
-  { level: 1, label: 'I', paused: false, msPerHour: 1200 },
-  { level: 2, label: 'II', paused: false, msPerHour: 420 },
-  { level: 3, label: 'III', paused: false, msPerHour: 140 },
-  { level: 4, label: 'IV', paused: false, msPerHour: 45 },
+  { level: 1, label: 'I', msPerHour: 1200 },
+  { level: 2, label: 'II', msPerHour: 420 },
+  { level: 3, label: 'III', msPerHour: 140 },
+  { level: 4, label: 'IV', msPerHour: 45 },
 ];
 
+const MIN_LEVEL = 1;
+const MAX_LEVEL = 4;
+
 export function getSpeedConfig(level) {
-  return HOI4_SPEEDS.find((s) => s.level === level) || HOI4_SPEEDS[0];
+  const clamped = Math.max(MIN_LEVEL, Math.min(MAX_LEVEL, level || MIN_LEVEL));
+  return HOI4_SPEEDS.find((s) => s.level === clamped) || HOI4_SPEEDS[0];
 }
 
-export function cycleSpeedLevel(current) {
-  const idx = HOI4_SPEEDS.findIndex((s) => s.level === current);
-  const next = HOI4_SPEEDS[(idx + 1) % HOI4_SPEEDS.length];
-  return next.level;
+export function stepSpeedLevel(current, delta) {
+  const level = Math.max(MIN_LEVEL, Math.min(MAX_LEVEL, (current || MIN_LEVEL) + delta));
+  return level;
 }

@@ -3,8 +3,7 @@ const NOTIFY_PREFIX = /^\[(SYS|DIP|FOC|EVT)\]/;
 
 const HOME_PAGE_COUNT = 2;
 const DEFAULT_HOME_PAGE = 1;
-const EDGE_BACK_WIDTH = 36;
-const EDGE_BACK_THRESHOLD = 50;
+const EDGE_BACK_THRESHOLD = 40;
 const SWIPE_THRESHOLD = 48;
 const SWIPE_VELOCITY = 0.35;
 
@@ -52,7 +51,9 @@ function escapeHtml(s) {
 
 export function createShell() {
   const home = document.getElementById('app-home');
-  const mainScreen = document.getElementById('main-screen');
+  const phoneDevice = document.getElementById('phone-device');
+  const bezelLeft = document.getElementById('edge-back-left');
+  const bezelRight = document.getElementById('edge-back-right');
   const statusBar = document.getElementById('status-bar');
   const shade = document.getElementById('notification-shade');
   const shadeBackdrop = document.getElementById('shade-backdrop');
@@ -73,11 +74,13 @@ export function createShell() {
   function closeShade() {
     shade?.classList.remove('open');
     shadeBackdrop?.classList.remove('open');
+    updateEdgeBackUI();
   }
 
   function openShade() {
     shade?.classList.add('open');
     shadeBackdrop?.classList.add('open');
+    updateEdgeBackUI();
   }
 
   function closeAllSubs() {
@@ -85,6 +88,7 @@ export function createShell() {
       el.classList.remove('sub-open');
     });
     currentSub = null;
+    updateEdgeBackUI();
   }
 
   function showHome() {
@@ -95,6 +99,7 @@ export function createShell() {
     });
     closeShade();
     setHomePage(DEFAULT_HOME_PAGE, false);
+    updateEdgeBackUI();
   }
 
   function openApp(appId) {
@@ -106,6 +111,7 @@ export function createShell() {
       v.hidden = v.id !== `app-${appId}`;
     });
     closeShade();
+    updateEdgeBackUI();
   }
 
   function openSub(subId) {
@@ -115,6 +121,7 @@ export function createShell() {
     closeAllSubs();
     sub.classList.add('sub-open');
     currentSub = subId;
+    updateEdgeBackUI();
   }
 
   function navigateBack() {
@@ -134,6 +141,19 @@ export function createShell() {
       return true;
     }
     return false;
+  }
+
+  function canEdgeBack() {
+    const modal = document.getElementById('phone-modal');
+    if (modal && !modal.hidden) return false;
+    return Boolean(currentApp) || Boolean(currentSub) || shade?.classList.contains('open');
+  }
+
+  function updateEdgeBackUI() {
+    const active = canEdgeBack();
+    phoneDevice?.classList.toggle('can-edge-back', active);
+    bezelLeft?.classList.toggle('bezel-inactive', !active);
+    bezelRight?.classList.toggle('bezel-inactive', !active);
   }
 
   function setHomePage(index, animate = true) {
@@ -326,67 +346,58 @@ export function createShell() {
   window.addEventListener('mousemove', (e) => { if (pulling) onPullMove(e.clientY); });
   window.addEventListener('mouseup', onPullEnd);
 
-  function canEdgeBack() {
-    const modal = document.getElementById('phone-modal');
-    if (modal && !modal.hidden) return false;
-    return Boolean(currentApp) || Boolean(currentSub) || shade?.classList.contains('open');
-  }
-
   function createEdgeBackSwipe() {
-    if (!mainScreen) return;
+    function bindBezel(el, side) {
+      if (!el) return;
 
-    let startX = 0;
-    let side = null;
-    let activeId = null;
-    let tracking = false;
+      let startX = 0;
+      let activeId = null;
+      let tracking = false;
 
-    function reset() {
-      side = null;
-      activeId = null;
-      tracking = false;
+      function reset() {
+        el.classList.remove('bezel-active');
+        tracking = false;
+        activeId = null;
+      }
+
+      el.addEventListener('pointerdown', (e) => {
+        if (!canEdgeBack()) return;
+        if (e.button !== undefined && e.button !== 0) return;
+        startX = e.clientX;
+        activeId = e.pointerId;
+        tracking = true;
+        el.classList.add('bezel-active');
+        el.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+
+      el.addEventListener('pointerup', (e) => {
+        if (!tracking || e.pointerId !== activeId) return;
+        const dx = e.clientX - startX;
+        const towardCenter = (side === 'left' && dx > EDGE_BACK_THRESHOLD)
+          || (side === 'right' && dx < -EDGE_BACK_THRESHOLD);
+        if (towardCenter) navigateBack();
+        try { el.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+        reset();
+      });
+
+      el.addEventListener('pointercancel', (e) => {
+        if (e.pointerId !== activeId) return;
+        try { el.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+        reset();
+      });
     }
 
-    function onDown(e) {
-      if (!canEdgeBack()) return;
-      if (e.button !== undefined && e.button !== 0) return;
-
-      const rect = mainScreen.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      if (x > EDGE_BACK_WIDTH && x < rect.width - EDGE_BACK_WIDTH) return;
-
-      side = x <= EDGE_BACK_WIDTH ? 'left' : 'right';
-      startX = e.clientX;
-      activeId = e.pointerId;
-      tracking = true;
-      mainScreen.setPointerCapture(e.pointerId);
-    }
-
-    function onUp(e) {
-      if (!tracking || e.pointerId !== activeId || !side) return;
-
-      const dx = e.clientX - startX;
-      const towardCenter = (side === 'left' && dx > EDGE_BACK_THRESHOLD)
-        || (side === 'right' && dx < -EDGE_BACK_THRESHOLD);
-      if (towardCenter) navigateBack();
-
-      try { mainScreen.releasePointerCapture(e.pointerId); } catch { /* noop */ }
-      reset();
-    }
-
-    mainScreen.addEventListener('pointerdown', onDown);
-    mainScreen.addEventListener('pointerup', onUp);
-    mainScreen.addEventListener('pointercancel', (e) => {
-      if (e.pointerId !== activeId) return;
-      try { mainScreen.releasePointerCapture(e.pointerId); } catch { /* noop */ }
-      reset();
-    });
+    bindBezel(bezelLeft, 'left');
+    bindBezel(bezelRight, 'right');
   }
 
   createEdgeBackSwipe();
+  updateEdgeBackUI();
 
   createHomePager();
   setHomePage(DEFAULT_HOME_PAGE, false);
   showHome();
 
-  return { showHome, openApp, navigateBack, openShade, closeShade, closeAllSubs, setHomePage };
+  return { showHome, openApp, navigateBack, openShade, closeShade, closeAllSubs, setHomePage, refreshUI: updateEdgeBackUI };
 }

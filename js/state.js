@@ -2,7 +2,7 @@ export function createInitialState() {
   return {
     date: new Date(1936, 0, 1, 6, 0, 0),
     paused: true,
-    speedLevel: 0,
+    speedLevel: 1,
     autoPauseOnEvent: true,
     stability: 75,
     tension: 12,

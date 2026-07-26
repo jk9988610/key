@@ -13,9 +13,11 @@ export function createEventUI({
   onPause,
   onResume,
   onChoiceComplete,
+  onModalChange,
 }) {
   function showModal(show) {
     if (modalEl) modalEl.hidden = !show;
+    onModalChange?.();
   }
 
   function showChoiceEvent(eventDef, state) {
