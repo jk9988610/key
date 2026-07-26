@@ -3,7 +3,7 @@ import { applyEffects } from './effects.js';
 import { formatDateISO } from './state.js';
 import focusData, { STARTER_FOCUS_IDS } from './data/focuses.js';
 
-export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDUpdate, eventUI, storySystem }) {
+export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDUpdate, onFocusProgress, eventUI, storySystem }) {
   const completed = new Set();
 
   function getDef(id) {
@@ -111,6 +111,15 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
     }, state);
   }
 
+  function updateFocusNotification() {
+    if (state.focusActive) {
+      const def = getDef(state.focusActive);
+      onFocusProgress?.({ title: def.name, current: state.focusProgress, total: def.days });
+    } else {
+      onFocusProgress?.(null);
+    }
+  }
+
   const progressEl = document.getElementById('focus-progress');
   const listEl = document.getElementById('focus-list');
 
@@ -128,16 +137,12 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
           <div class="focus-active-meta">${state.focusProgress}/${def.days} 日</div>
         `;
       }
-      const dock = document.getElementById('dock-focus-preview');
-      if (dock) dock.textContent = `国策：${def.name} ${state.focusProgress}/${def.days}`;
       listEl.innerHTML = '';
+      updateFocusNotification();
       return;
     }
 
     if (progressEl) progressEl.hidden = true;
-
-    const dock = document.getElementById('dock-focus-preview');
-    if (dock && !state.focusActive) dock.textContent = '国策：点击选择';
 
     const available = getAvailable();
     listEl.innerHTML = available.map((fid) => {
@@ -150,6 +155,7 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
     listEl.querySelectorAll('.focus-start-btn:not([disabled])').forEach((btn) => {
       btn.addEventListener('click', () => startFocus(btn.dataset.focus));
     });
+    updateFocusNotification();
   }
 
   return {

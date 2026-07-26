@@ -1,57 +1,11 @@
-/** 仅收录结构化系统行，过滤叙事废话 */
-const NOTIFY_PREFIX = /^\[(SYS|DIP|FOC|EVT)\]/;
-
 const HOME_PAGE_COUNT = 2;
 const DEFAULT_HOME_PAGE = 1;
 const EDGE_BACK_THRESHOLD = 40;
 const SWIPE_THRESHOLD = 48;
 const SWIPE_VELOCITY = 0.35;
 
-export function createNotifications({ listEl }) {
-  const items = [];
-  const MAX = 40;
-
-  function add(text, type = 'sys') {
-    if (!NOTIFY_PREFIX.test(text)) return;
-
-    const tag = text.match(/^\[(\w+)\]/)?.[1]?.toLowerCase() || type;
-    const entry = {
-      text,
-      type: tag === 'dip' ? 'dip' : tag === 'foc' ? 'foc' : tag === 'evt' ? 'evt' : 'sys',
-      time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-    };
-    items.unshift(entry);
-    if (items.length > MAX) items.pop();
-
-    render();
-  }
-
-  function render() {
-    if (!listEl) return;
-    if (!items.length) {
-      listEl.innerHTML = '<p class="notif-empty">暂无系统通知</p>';
-      return;
-    }
-    listEl.innerHTML = items.map((n) => `
-      <div class="notif-item notif-${n.type}">
-        <span class="notif-time">${n.time}</span>
-        <span class="notif-text">${escapeHtml(n.text)}</span>
-      </div>
-    `).join('');
-  }
-
-  function clearBadge() {}
-
-  return { add, render, clearBadge };
-}
-
-function escapeHtml(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
 export function createShell() {
   const home = document.getElementById('app-home');
-  const phoneDevice = document.getElementById('phone-device');
   const bezelLeft = document.getElementById('edge-back-left');
   const bezelRight = document.getElementById('edge-back-right');
   const statusBar = document.getElementById('status-bar');
@@ -151,20 +105,22 @@ export function createShell() {
 
   function updateEdgeBackUI() {
     const active = canEdgeBack();
-    phoneDevice?.classList.toggle('can-edge-back', active);
     bezelLeft?.classList.toggle('bezel-inactive', !active);
     bezelRight?.classList.toggle('bezel-inactive', !active);
   }
 
+  function syncPagerTransform(animate) {
+    if (!homePages) return;
+    homePages.classList.toggle('no-transition', !animate);
+    homePages.style.transform = `translate3d(-${homePage * 100}%, 0, 0)`;
+    if (!animate) {
+      requestAnimationFrame(() => homePages?.classList.remove('no-transition'));
+    }
+  }
+
   function setHomePage(index, animate = true) {
     homePage = Math.max(0, Math.min(HOME_PAGE_COUNT - 1, index));
-    if (homePages) {
-      homePages.classList.toggle('no-transition', !animate);
-      homePages.style.transform = `translateX(-${homePage * 100}%)`;
-      if (!animate) {
-        requestAnimationFrame(() => homePages?.classList.remove('no-transition'));
-      }
-    }
+    syncPagerTransform(animate);
     pageDots?.querySelectorAll('.dot').forEach((d) => {
       d.classList.toggle('active', Number(d.dataset.page) === homePage);
     });
@@ -195,11 +151,10 @@ export function createShell() {
       let x = -homePage * w + dx;
       if (x > maxX) x = maxX + (x - maxX) * 0.35;
       if (x < minX) x = minX + (x - minX) * 0.35;
-      homePages.style.transform = `translateX(${x}px)`;
+      homePages.style.transform = `translate3d(${x}px, 0, 0)`;
     }
 
     function finishDrag(dx, dt) {
-      const w = pageWidth();
       const velocity = dt > 0 ? dx / dt : 0;
       let next = homePage;
 
@@ -208,7 +163,12 @@ export function createShell() {
         else if (dx > 0 && homePage > 0) next = homePage - 1;
       }
 
-      setHomePage(next, true);
+      homePage = next;
+      homePages.classList.remove('no-transition');
+      syncPagerTransform(true);
+      pageDots?.querySelectorAll('.dot').forEach((d) => {
+        d.classList.toggle('active', Number(d.dataset.page) === homePage);
+      });
     }
 
     function onDown(e) {
@@ -239,14 +199,14 @@ export function createShell() {
           axis = 'y';
           dragging = false;
           homePager.releasePointerCapture(e.pointerId);
-          setHomePage(homePage, false);
+          syncPagerTransform(false);
           return;
         }
         axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
         if (axis === 'y') {
           dragging = false;
           homePager.releasePointerCapture(e.pointerId);
-          setHomePage(homePage, false);
+          syncPagerTransform(false);
           return;
         }
       }
@@ -266,10 +226,6 @@ export function createShell() {
       const dx = e.clientX - startX;
       const dt = performance.now() - startTime;
       try { homePager.releasePointerCapture(e.pointerId); } catch { /* noop */ }
-
-      homePages.classList.add('no-transition');
-      homePages.style.transform = `translateX(-${homePage * 100}%)`;
-      homePages.offsetHeight;
       finishDrag(dx, dt);
     }
 
@@ -278,7 +234,7 @@ export function createShell() {
       dragging = false;
       activeId = null;
       homePager.classList.remove('is-dragging');
-      setHomePage(homePage, true);
+      syncPagerTransform(true);
     }
 
     homePager.addEventListener('pointerdown', onDown);
@@ -355,7 +311,6 @@ export function createShell() {
       let tracking = false;
 
       function reset() {
-        el.classList.remove('bezel-active');
         tracking = false;
         activeId = null;
       }
@@ -366,7 +321,6 @@ export function createShell() {
         startX = e.clientX;
         activeId = e.pointerId;
         tracking = true;
-        el.classList.add('bezel-active');
         el.setPointerCapture(e.pointerId);
         e.preventDefault();
       });

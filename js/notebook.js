@@ -33,12 +33,6 @@ export function createNotebook() {
     if (data[type].length > MAX_ENTRIES) data[type].pop();
     if (previews[type]) previews[type].textContent = text;
     renderLog(type);
-    if (type === 'focus') updateDock(text);
-  }
-
-  function updateDock(text) {
-    const dock = document.getElementById('dock-focus-preview');
-    if (dock) dock.textContent = `国策：${text}`;
   }
 
   function bindSubMenus() {

@@ -7,7 +7,8 @@ import { createNotebook } from './notebook.js';
 import { createStorySystem } from './story.js';
 import { createAIScript } from './ai.js';
 import { createActionSystem } from './actions.js';
-import { createShell, createNotifications } from './shell.js';
+import { createShell } from './shell.js';
+import { createNotifications } from './notifications.js';
 import { createInitialState, formatDateTimeHUD, LOCATION_NAMES } from './state.js';
 import { getSpeedConfig, stepSpeedLevel } from './speed.js';
 import { VERSION } from './version.js';
@@ -116,6 +117,7 @@ const focusSystem = createFocusSystem({
   notebook,
   onMapUpdate: () => {},
   onHUDUpdate: updateHUD,
+  onFocusProgress: (p) => notifications.setFocusProgress(p),
   eventUI,
   storySystem,
 });
