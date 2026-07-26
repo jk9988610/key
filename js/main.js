@@ -12,7 +12,7 @@ import { createNotifications } from './notifications.js';
 import { createPendingQueue } from './pending.js';
 import { createInitialState, formatDateTimeHUD, LOCATION_NAMES } from './state.js';
 import { getSpeedConfig, stepSpeedLevel } from './speed.js';
-import { getVersion } from './version.js?v=0.8.4';
+import { getVersion } from './version.js?v=0.8.5';
 
 const state = createInitialState();
 
