@@ -1,6 +1,11 @@
 /** 仅收录结构化系统行，过滤叙事废话 */
 const NOTIFY_PREFIX = /^\[(SYS|DIP|FOC|EVT)\]/;
 
+const HOME_PAGE_COUNT = 3;
+const DEFAULT_HOME_PAGE = 1;
+const SWIPE_THRESHOLD = 48;
+const SWIPE_VELOCITY = 0.35;
+
 export function createNotifications({ listEl, badgeEl }) {
   const items = [];
   const MAX = 40;
@@ -54,14 +59,14 @@ export function createShell({ onShadeOpen } = {}) {
   const statusBar = document.getElementById('status-bar');
   const shade = document.getElementById('notification-shade');
   const shadeBackdrop = document.getElementById('shade-backdrop');
+  const homePager = document.getElementById('home-pager');
   const homePages = document.getElementById('home-pages');
   const pageDots = document.getElementById('page-dots');
   const notifBadge = document.getElementById('notif-badge');
 
   let currentApp = null;
   let currentSub = null;
-  let homePage = 0;
-  const HOME_PAGE_COUNT = 2;
+  let homePage = DEFAULT_HOME_PAGE;
 
   const SUB_MAP = {
     'focus-log': 'sub-focus-log',
@@ -91,13 +96,10 @@ export function createShell({ onShadeOpen } = {}) {
     currentApp = null;
     closeAllSubs();
     document.querySelectorAll('.app-screen').forEach((v) => {
-      if (v.id === 'app-home') {
-        v.hidden = false;
-      } else {
-        v.hidden = true;
-      }
+      v.hidden = v.id !== 'app-home';
     });
     closeShade();
+    setHomePage(DEFAULT_HOME_PAGE, false);
   }
 
   function openApp(appId) {
@@ -105,10 +107,8 @@ export function createShell({ onShadeOpen } = {}) {
     if (!screen) return;
     currentApp = appId;
     closeAllSubs();
-    if (home) home.hidden = true;
     document.querySelectorAll('.app-screen').forEach((v) => {
-      if (v.id === 'app-home') v.hidden = true;
-      else v.hidden = v.id !== `app-${appId}`;
+      v.hidden = v.id !== `app-${appId}`;
     });
     closeShade();
   }
@@ -141,14 +141,135 @@ export function createShell({ onShadeOpen } = {}) {
     return false;
   }
 
-  function setHomePage(index) {
+  function setHomePage(index, animate = true) {
     homePage = Math.max(0, Math.min(HOME_PAGE_COUNT - 1, index));
     if (homePages) {
+      homePages.classList.toggle('no-transition', !animate);
       homePages.style.transform = `translateX(-${homePage * 100}%)`;
+      if (!animate) {
+        requestAnimationFrame(() => homePages?.classList.remove('no-transition'));
+      }
     }
-    pageDots?.querySelectorAll('.dot').forEach((d, i) => {
-      d.classList.toggle('active', i === homePage);
+    pageDots?.querySelectorAll('.dot').forEach((d) => {
+      d.classList.toggle('active', Number(d.dataset.page) === homePage);
     });
+  }
+
+  function isPagerBlocked() {
+    return Boolean(currentApp) || shade?.classList.contains('open');
+  }
+
+  function createHomePager() {
+    if (!homePager || !homePages) return;
+
+    let startX = 0;
+    let startY = 0;
+    let startTime = 0;
+    let activeId = null;
+    let axis = null;
+    let dragging = false;
+
+    function pageWidth() {
+      return homePager.clientWidth || 1;
+    }
+
+    function applyOffset(dx) {
+      const w = pageWidth();
+      const minX = -(HOME_PAGE_COUNT - 1) * w;
+      const maxX = 0;
+      let x = -homePage * w + dx;
+      if (x > maxX) x = maxX + (x - maxX) * 0.35;
+      if (x < minX) x = minX + (x - minX) * 0.35;
+      homePages.style.transform = `translateX(${x}px)`;
+    }
+
+    function finishDrag(dx, dt) {
+      const w = pageWidth();
+      const velocity = dt > 0 ? dx / dt : 0;
+      let next = homePage;
+
+      if (Math.abs(dx) > SWIPE_THRESHOLD || Math.abs(velocity) > SWIPE_VELOCITY) {
+        if (dx < 0 && homePage < HOME_PAGE_COUNT - 1) next = homePage + 1;
+        else if (dx > 0 && homePage > 0) next = homePage - 1;
+      }
+
+      setHomePage(next, true);
+    }
+
+    function onDown(e) {
+      if (isPagerBlocked()) return;
+      if (e.button !== undefined && e.button !== 0) return;
+      if (e.target.closest('button, a, input, textarea, select, .dot')) return;
+
+      activeId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      startTime = performance.now();
+      axis = null;
+      dragging = true;
+      homePages.classList.add('no-transition');
+      homePager.setPointerCapture(e.pointerId);
+    }
+
+    function onMove(e) {
+      if (!dragging || e.pointerId !== activeId) return;
+
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (!axis) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        const inConsole = e.target.closest('#text-stream');
+        if (inConsole && Math.abs(dy) >= Math.abs(dx)) {
+          axis = 'y';
+          dragging = false;
+          homePager.releasePointerCapture(e.pointerId);
+          setHomePage(homePage, false);
+          return;
+        }
+        axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+        if (axis === 'y') {
+          dragging = false;
+          homePager.releasePointerCapture(e.pointerId);
+          setHomePage(homePage, false);
+          return;
+        }
+      }
+
+      if (axis !== 'x') return;
+      e.preventDefault();
+      homePager.classList.add('is-dragging');
+      applyOffset(dx);
+    }
+
+    function onUp(e) {
+      if (!dragging || e.pointerId !== activeId) return;
+      dragging = false;
+      activeId = null;
+      homePager.classList.remove('is-dragging');
+
+      const dx = e.clientX - startX;
+      const dt = performance.now() - startTime;
+      try { homePager.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+
+      homePages.classList.add('no-transition');
+      homePages.style.transform = `translateX(-${homePage * 100}%)`;
+      homePages.offsetHeight;
+      finishDrag(dx, dt);
+    }
+
+    function onCancel(e) {
+      if (e.pointerId !== activeId) return;
+      dragging = false;
+      activeId = null;
+      homePager.classList.remove('is-dragging');
+      setHomePage(homePage, true);
+    }
+
+    homePager.addEventListener('pointerdown', onDown);
+    homePager.addEventListener('pointermove', onMove);
+    homePager.addEventListener('pointerup', onUp);
+    homePager.addEventListener('pointercancel', onCancel);
   }
 
   document.querySelectorAll('.app-launcher').forEach((btn) => {
@@ -168,7 +289,6 @@ export function createShell({ onShadeOpen } = {}) {
 
   shadeBackdrop?.addEventListener('click', closeShade);
 
-  /* 上滑关闭通知栏 */
   let shadeStartY = 0;
   shade?.addEventListener('touchstart', (e) => {
     shadeStartY = e.touches[0].clientY;
@@ -183,7 +303,6 @@ export function createShell({ onShadeOpen } = {}) {
     dot.addEventListener('click', () => setHomePage(Number(dot.dataset.page)));
   });
 
-  /* ── 下拉状态栏打开通知 ── */
   let pullStartY = 0;
   let pulling = false;
 
@@ -195,8 +314,7 @@ export function createShell({ onShadeOpen } = {}) {
 
   function onPullMove(y) {
     if (!pulling) return;
-    const dy = y - pullStartY;
-    if (dy > 50) {
+    if (y - pullStartY > 50) {
       openShade();
       pulling = false;
     }
@@ -209,7 +327,6 @@ export function createShell({ onShadeOpen } = {}) {
   statusBar?.addEventListener('touchstart', (e) => onPullStart(e.touches[0].clientY), { passive: true });
   statusBar?.addEventListener('touchmove', (e) => onPullMove(e.touches[0].clientY), { passive: true });
   statusBar?.addEventListener('touchend', onPullEnd);
-
   statusBar?.addEventListener('mousedown', (e) => onPullStart(e.clientY));
   window.addEventListener('mousemove', (e) => { if (pulling) onPullMove(e.clientY); });
   window.addEventListener('mouseup', onPullEnd);
@@ -219,7 +336,6 @@ export function createShell({ onShadeOpen } = {}) {
     openShade();
   });
 
-  /* ── 边缘滑动返回（触控 + 鼠标） ── */
   let edgeStartX = 0;
   let edgeSide = null;
   let edgeMouseDown = false;
@@ -260,47 +376,9 @@ export function createShell({ onShadeOpen } = {}) {
   bindEdgeSwipe(document.getElementById('edge-swipe-left'), 'left');
   bindEdgeSwipe(document.getElementById('edge-swipe-right'), 'right');
 
-  /* ── 主屏左右翻页（触控 + 鼠标） ── */
-  let pageStartX = 0;
-  let pageSwiping = false;
-  let pageMouseDown = false;
-
-  function tryPageSwipe(endX) {
-    const dx = endX - pageStartX;
-    if (dx < -50 && homePage < HOME_PAGE_COUNT - 1) setHomePage(homePage + 1);
-    else if (dx > 50 && homePage > 0) setHomePage(homePage - 1);
-    pageSwiping = false;
-    pageMouseDown = false;
-  }
-
-  function onPageStart(x) {
-    if (currentApp || shade?.classList.contains('open')) return;
-    pageStartX = x;
-    pageSwiping = true;
-  }
-
-  home?.addEventListener('touchstart', (e) => {
-    onPageStart(e.touches[0].clientX);
-  }, { passive: true });
-
-  home?.addEventListener('touchend', (e) => {
-    if (!pageSwiping || currentApp) return;
-    tryPageSwipe(e.changedTouches[0].clientX);
-  }, { passive: true });
-
-  home?.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.app-launcher, .tool-btn, .page-dots, .nav-back, .sub-back')) return;
-    onPageStart(e.clientX);
-    pageMouseDown = true;
-  });
-
-  home?.addEventListener('mouseup', (e) => {
-    if (!pageMouseDown || !pageSwiping || currentApp) return;
-    tryPageSwipe(e.clientX);
-  });
-
-  setHomePage(0);
+  createHomePager();
+  setHomePage(DEFAULT_HOME_PAGE, false);
   showHome();
 
-  return { showHome, openApp, navigateBack, openShade, closeShade, closeAllSubs };
+  return { showHome, openApp, navigateBack, openShade, closeShade, closeAllSubs, setHomePage };
 }

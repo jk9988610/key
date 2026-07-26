@@ -18,15 +18,14 @@
   --status-h: 44px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --phone-w: 100%;
-  --phone-max: 480px;
+  --phone-radius: clamp(18px, 4vw, 32px);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
   height: 100%;
-  background: #000;
+  background: radial-gradient(ellipse at 50% 0%, #1a1a2e 0%, #000 70%);
   color: var(--text);
   font-family: var(--font);
   font-size: 14px;
@@ -34,17 +33,35 @@ html, body {
   overflow: hidden;
 }
 
+/* ── 视口：手机随屏幕缩放 ── */
+#viewport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100dvh;
+  padding:
+    max(8px, var(--safe-top))
+    max(8px, env(safe-area-inset-right, 0px))
+    max(8px, var(--safe-bottom))
+    max(8px, env(safe-area-inset-left, 0px));
+}
+
 /* ── 手机外框 ── */
 #phone-frame {
   display: flex;
   flex-direction: column;
-  width: var(--phone-w);
-  max-width: var(--phone-max);
-  height: 100dvh;
-  margin: 0 auto;
+  width: min(100%, calc((100dvh - 16px - var(--safe-top) - var(--safe-bottom)) * 9 / 19.5));
+  height: min(calc(100dvh - 16px - var(--safe-top) - var(--safe-bottom)), calc(100vw * 19.5 / 9));
+  max-width: 440px;
   background: var(--phone-bg);
   position: relative;
   overflow: hidden;
+  border-radius: var(--phone-radius);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08),
+    0 24px 80px rgba(0,0,0,0.65);
+  flex-shrink: 0;
 }
 
 /* ── 状态栏（下拉展开通知） ── */
@@ -263,9 +280,9 @@ html, body {
 .notif-narrative .notif-text { font-family: var(--font-serif); color: var(--text); }
 .notif-empty { color: var(--text-dim); font-size: 13px; text-align: center; padding: 24px; }
 
-/* ── 上半屏：应用区 ── */
+/* ── 应用区（占满手机剩余高度） ── */
 #main-screen {
-  flex: 7;
+  flex: 1;
   min-height: 0;
   position: relative;
   overflow: hidden;
@@ -326,26 +343,73 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  touch-action: pan-y;
+}
+
+.home-pager-wrap.is-dragging {
+  touch-action: none;
 }
 
 .home-pages {
   display: flex;
   width: 100%;
-  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  height: 100%;
   flex: 1;
   min-height: 0;
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+
+.home-pages.no-transition {
+  transition: none;
 }
 
 .home-page {
   flex: 0 0 100%;
+  width: 100%;
   min-width: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  overflow: hidden;
+}
+
+.home-page-console {
+  background: #0d0d0f;
+}
+
+.console-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.console-stream,
+#text-stream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px;
+  -webkit-overflow-scrolling: touch;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  touch-action: pan-y;
 }
 
 .home-page-tools {
   padding: 8px 4px 0;
+  justify-content: flex-start;
+}
+
+.home-page-apps {
+  justify-content: center;
+  padding: 0 4px;
 }
 
 .page-title {
@@ -701,43 +765,6 @@ html, body {
 
 .focus-empty { color: var(--text-dim); font-size: 14px; padding: 20px; text-align: center; }
 
-/* ── 下半屏：信息流 ── */
-#info-panel {
-  flex: 3;
-  min-height: 0;
-  max-height: 32dvh;
-  display: flex;
-  flex-direction: column;
-  background: #0d0d0f;
-  border-top: 1px solid var(--border);
-}
-
-.info-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  flex-shrink: 0;
-}
-
-.info-hint {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--text-dim);
-}
-
-#text-stream {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px 14px;
-  -webkit-overflow-scrolling: touch;
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
 #text-stream .brief { color: var(--blue); margin-bottom: 4px; }
 #text-stream .sys  { color: var(--green); margin-bottom: 3px; }
 #text-stream .dip  { color: var(--blue); margin-bottom: 3px; }
@@ -764,10 +791,18 @@ html, body {
 
 #notebook-hidden { display: none !important; }
 
-/* ── 横屏预留（后续实现） ── */
-@media (orientation: landscape) and (min-height: 400px) {
+.info-hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.page-dots .dot[data-page="0"].active { background: var(--green); }
+
+@media (orientation: landscape) and (max-height: 520px) {
   #phone-frame {
-    max-width: 100%;
+    width: min(calc((100dvh - 16px) * 9 / 19.5), 42vw);
+    height: min(calc(100dvh - 16px), calc(42vw * 19.5 / 9));
+    max-width: none;
   }
-  /* 横屏布局待 v0.7 实现 */
 }
