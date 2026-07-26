@@ -9,6 +9,7 @@ import { createAIScript } from './ai.js';
 import { createActionSystem } from './actions.js';
 import { createShell, createNotifications } from './shell.js';
 import { createInitialState, formatDateCN, LOCATION_NAMES } from './state.js';
+import { VERSION } from './version.js';
 
 const state = createInitialState();
 
@@ -27,6 +28,7 @@ const els = {
   eventPrompt: document.getElementById('event-text'),
   eventText: document.getElementById('event-text'),
   eventChoices: document.getElementById('event-choices'),
+  consoleVersion: document.getElementById('console-version'),
 };
 
 const notifications = createNotifications({
@@ -145,6 +147,8 @@ notebook.bindSubMenus();
 actions.bind();
 focusSystem.renderPanel();
 updateHUD();
+if (els.consoleVersion) els.consoleVersion.textContent = VERSION;
+output.append(`[SYS] 元首办公室 ${VERSION} 已就绪`, 'sys');
 showOpening();
 focusSystem.showStarterChoice();
 requestAnimationFrame(gameLoop);
