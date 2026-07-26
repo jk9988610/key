@@ -1,11 +1,13 @@
 const HOME_PAGE_COUNT = 2;
 const DEFAULT_HOME_PAGE = 1;
 const EDGE_BACK_THRESHOLD = 40;
+const EDGE_ZONE = 28;
 const SWIPE_THRESHOLD = 48;
 const SWIPE_VELOCITY = 0.35;
 
 export function createShell() {
   const home = document.getElementById('app-home');
+  const phoneFrame = document.getElementById('phone-frame');
   const bezelLeft = document.getElementById('edge-back-left');
   const bezelRight = document.getElementById('edge-back-right');
   const statusBar = document.getElementById('status-bar');
@@ -260,15 +262,42 @@ export function createShell() {
 
   shadeBackdrop?.addEventListener('click', closeShade);
 
-  let shadeStartY = 0;
-  shade?.addEventListener('touchstart', (e) => {
-    shadeStartY = e.touches[0].clientY;
-  }, { passive: true });
-  shade?.addEventListener('touchend', (e) => {
-    if (!shade?.classList.contains('open')) return;
-    const dy = e.changedTouches[0].clientY - shadeStartY;
-    if (dy < -40) closeShade();
-  }, { passive: true });
+  function createShadeDismiss() {
+    if (!shade) return;
+    const notifList = document.getElementById('notif-list');
+    let startY = 0;
+    let startX = 0;
+    let activeId = null;
+    let fromList = false;
+
+    shade.addEventListener('pointerdown', (e) => {
+      if (!shade.classList.contains('open')) return;
+      if (e.target.closest('.notif-swipe-row.revealed, .notif-action-btn')) return;
+      startY = e.clientY;
+      startX = e.clientX;
+      activeId = e.pointerId;
+      fromList = Boolean(e.target.closest('.notif-list'));
+    });
+
+    shade.addEventListener('pointerup', (e) => {
+      if (e.pointerId !== activeId) return;
+      if (!shade.classList.contains('open')) return;
+      const dy = e.clientY - startY;
+      const dx = e.clientX - startX;
+      const listAtTop = !notifList || notifList.scrollTop <= 2;
+      const canDismiss = !fromList || listAtTop;
+      if (canDismiss && dy < -40 && Math.abs(dy) > Math.abs(dx)) closeShade();
+      activeId = null;
+      fromList = false;
+    });
+
+    shade.addEventListener('pointercancel', () => {
+      activeId = null;
+      fromList = false;
+    });
+  }
+
+  createShadeDismiss();
 
   pageDots?.querySelectorAll('.dot').forEach((dot) => {
     dot.addEventListener('click', () => setHomePage(Number(dot.dataset.page)));
@@ -303,47 +332,59 @@ export function createShell() {
   window.addEventListener('mouseup', onPullEnd);
 
   function createEdgeBackSwipe() {
-    function bindBezel(el, side) {
-      if (!el) return;
+    if (!phoneFrame) return;
 
-      let startX = 0;
-      let activeId = null;
-      let tracking = false;
+    let gesture = null;
 
-      function reset() {
-        tracking = false;
-        activeId = null;
+    phoneFrame.addEventListener('pointerdown', (e) => {
+      if (!canEdgeBack()) return;
+      if (e.button !== undefined && e.button !== 0) return;
+
+      const rect = phoneFrame.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      let side = null;
+      if (x <= EDGE_ZONE) side = 'left';
+      else if (x >= rect.width - EDGE_ZONE) side = 'right';
+
+      gesture = {
+        side,
+        startX: e.clientX,
+        crossed: Boolean(side),
+        pointerId: e.pointerId,
+      };
+    }, { passive: true });
+
+    phoneFrame.addEventListener('pointermove', (e) => {
+      if (!gesture || e.pointerId !== gesture.pointerId || !canEdgeBack()) return;
+
+      const rect = phoneFrame.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+
+      if (!gesture.crossed) {
+        if (x <= EDGE_ZONE) {
+          gesture.crossed = true;
+          gesture.side = 'left';
+          gesture.startX = e.clientX;
+        } else if (x >= rect.width - EDGE_ZONE) {
+          gesture.crossed = true;
+          gesture.side = 'right';
+          gesture.startX = e.clientX;
+        }
       }
+    }, { passive: true });
 
-      el.addEventListener('pointerdown', (e) => {
-        if (!canEdgeBack()) return;
-        if (e.button !== undefined && e.button !== 0) return;
-        startX = e.clientX;
-        activeId = e.pointerId;
-        tracking = true;
-        el.setPointerCapture(e.pointerId);
-        e.preventDefault();
-      });
-
-      el.addEventListener('pointerup', (e) => {
-        if (!tracking || e.pointerId !== activeId) return;
-        const dx = e.clientX - startX;
-        const towardCenter = (side === 'left' && dx > EDGE_BACK_THRESHOLD)
-          || (side === 'right' && dx < -EDGE_BACK_THRESHOLD);
+    phoneFrame.addEventListener('pointerup', (e) => {
+      if (!gesture || e.pointerId !== gesture.pointerId) return;
+      if (gesture.crossed && gesture.side) {
+        const dx = e.clientX - gesture.startX;
+        const towardCenter = (gesture.side === 'left' && dx > EDGE_BACK_THRESHOLD)
+          || (gesture.side === 'right' && dx < -EDGE_BACK_THRESHOLD);
         if (towardCenter) navigateBack();
-        try { el.releasePointerCapture(e.pointerId); } catch { /* noop */ }
-        reset();
-      });
+      }
+      gesture = null;
+    }, { passive: true });
 
-      el.addEventListener('pointercancel', (e) => {
-        if (e.pointerId !== activeId) return;
-        try { el.releasePointerCapture(e.pointerId); } catch { /* noop */ }
-        reset();
-      });
-    }
-
-    bindBezel(bezelLeft, 'left');
-    bindBezel(bezelRight, 'right');
+    phoneFrame.addEventListener('pointercancel', () => { gesture = null; });
   }
 
   createEdgeBackSwipe();

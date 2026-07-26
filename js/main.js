@@ -126,7 +126,6 @@ const aiScript = createAIScript({ state, notebook, storySystem });
 
 const dayCycle = createDayCycle({
   state,
-  output,
   focusSystem,
   aiScript,
 });
