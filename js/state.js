@@ -1,8 +1,8 @@
 export function createInitialState() {
   return {
-    date: new Date(1936, 0, 1),
+    date: new Date(1936, 0, 1, 6, 0, 0),
     paused: true,
-    speed: 1,
+    speedLevel: 0,
     autoPauseOnEvent: true,
     stability: 75,
     tension: 12,
@@ -29,6 +29,16 @@ export function formatDateISO(d) {
 
 export function formatDateCN(d) {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+/** 状态栏：HOI4 风格 年/月/日 时:分 */
+export function formatDateTimeHUD(d) {
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${y}/${m}/${day} ${h}:${min}`;
 }
 
 export const LOCATION_NAMES = {

@@ -22,7 +22,7 @@ export function createDayCycle({ state, output, focusSystem, aiScript }) {
       return;
     }
 
-    if (state.speed >= 3 && daysSilent >= 14) {
+    if (state.speedLevel >= 3 && daysSilent >= 14) {
       daysSilent = 0;
       output.append(
         `[SYS] ${formatDateISO(state.date)} 稳${state.stability} 政${state.politicalPower} 紧张${state.tension}%`,

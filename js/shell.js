@@ -1,12 +1,14 @@
 /** 仅收录结构化系统行，过滤叙事废话 */
 const NOTIFY_PREFIX = /^\[(SYS|DIP|FOC|EVT)\]/;
 
-const HOME_PAGE_COUNT = 3;
+const HOME_PAGE_COUNT = 2;
 const DEFAULT_HOME_PAGE = 1;
+const EDGE_BACK_WIDTH = 36;
+const EDGE_BACK_THRESHOLD = 50;
 const SWIPE_THRESHOLD = 48;
 const SWIPE_VELOCITY = 0.35;
 
-export function createNotifications({ listEl, badgeEl }) {
+export function createNotifications({ listEl }) {
   const items = [];
   const MAX = 40;
 
@@ -22,10 +24,6 @@ export function createNotifications({ listEl, badgeEl }) {
     items.unshift(entry);
     if (items.length > MAX) items.pop();
 
-    if (badgeEl) {
-      badgeEl.hidden = false;
-      badgeEl.title = `${items.length} 条通知`;
-    }
     render();
   }
 
@@ -43,9 +41,7 @@ export function createNotifications({ listEl, badgeEl }) {
     `).join('');
   }
 
-  function clearBadge() {
-    if (badgeEl) badgeEl.hidden = true;
-  }
+  function clearBadge() {}
 
   return { add, render, clearBadge };
 }
@@ -54,15 +50,15 @@ function escapeHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-export function createShell({ onShadeOpen } = {}) {
+export function createShell() {
   const home = document.getElementById('app-home');
+  const mainScreen = document.getElementById('main-screen');
   const statusBar = document.getElementById('status-bar');
   const shade = document.getElementById('notification-shade');
   const shadeBackdrop = document.getElementById('shade-backdrop');
   const homePager = document.getElementById('home-pager');
   const homePages = document.getElementById('home-pages');
   const pageDots = document.getElementById('page-dots');
-  const notifBadge = document.getElementById('notif-badge');
 
   let currentApp = null;
   let currentSub = null;
@@ -82,7 +78,6 @@ export function createShell({ onShadeOpen } = {}) {
   function openShade() {
     shade?.classList.add('open');
     shadeBackdrop?.classList.add('open');
-    onShadeOpen?.();
   }
 
   function closeAllSubs() {
@@ -331,50 +326,63 @@ export function createShell({ onShadeOpen } = {}) {
   window.addEventListener('mousemove', (e) => { if (pulling) onPullMove(e.clientY); });
   window.addEventListener('mouseup', onPullEnd);
 
-  notifBadge?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    openShade();
-  });
-
-  let edgeStartX = 0;
-  let edgeSide = null;
-  let edgeMouseDown = false;
-
-  function tryEdgeBack(endX) {
-    if (!edgeSide) return;
-    const dx = endX - edgeStartX;
-    const towardCenter = (edgeSide === 'left' && dx > 55) || (edgeSide === 'right' && dx < -55);
-    if (towardCenter) navigateBack();
-    edgeSide = null;
-    edgeMouseDown = false;
+  function canEdgeBack() {
+    const modal = document.getElementById('phone-modal');
+    if (modal && !modal.hidden) return false;
+    return Boolean(currentApp) || Boolean(currentSub) || shade?.classList.contains('open');
   }
 
-  function bindEdgeSwipe(zone, side) {
-    zone?.addEventListener('touchstart', (e) => {
-      edgeStartX = e.touches[0].clientX;
-      edgeSide = side;
-    }, { passive: true });
+  function createEdgeBackSwipe() {
+    if (!mainScreen) return;
 
-    zone?.addEventListener('touchend', (e) => {
-      if (edgeSide !== side) return;
-      tryEdgeBack(e.changedTouches[0].clientX);
-    }, { passive: true });
+    let startX = 0;
+    let side = null;
+    let activeId = null;
+    let tracking = false;
 
-    zone?.addEventListener('mousedown', (e) => {
-      edgeStartX = e.clientX;
-      edgeSide = side;
-      edgeMouseDown = true;
-      e.preventDefault();
-    });
+    function reset() {
+      side = null;
+      activeId = null;
+      tracking = false;
+    }
 
-    zone?.addEventListener('mouseup', (e) => {
-      if (!edgeMouseDown || edgeSide !== side) return;
-      tryEdgeBack(e.clientX);
+    function onDown(e) {
+      if (!canEdgeBack()) return;
+      if (e.button !== undefined && e.button !== 0) return;
+
+      const rect = mainScreen.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      if (x > EDGE_BACK_WIDTH && x < rect.width - EDGE_BACK_WIDTH) return;
+
+      side = x <= EDGE_BACK_WIDTH ? 'left' : 'right';
+      startX = e.clientX;
+      activeId = e.pointerId;
+      tracking = true;
+      mainScreen.setPointerCapture(e.pointerId);
+    }
+
+    function onUp(e) {
+      if (!tracking || e.pointerId !== activeId || !side) return;
+
+      const dx = e.clientX - startX;
+      const towardCenter = (side === 'left' && dx > EDGE_BACK_THRESHOLD)
+        || (side === 'right' && dx < -EDGE_BACK_THRESHOLD);
+      if (towardCenter) navigateBack();
+
+      try { mainScreen.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+      reset();
+    }
+
+    mainScreen.addEventListener('pointerdown', onDown);
+    mainScreen.addEventListener('pointerup', onUp);
+    mainScreen.addEventListener('pointercancel', (e) => {
+      if (e.pointerId !== activeId) return;
+      try { mainScreen.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+      reset();
     });
   }
 
-  bindEdgeSwipe(document.getElementById('edge-swipe-left'), 'left');
-  bindEdgeSwipe(document.getElementById('edge-swipe-right'), 'right');
+  createEdgeBackSwipe();
 
   createHomePager();
   setHomePage(DEFAULT_HOME_PAGE, false);

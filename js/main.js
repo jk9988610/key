@@ -8,7 +8,8 @@ import { createStorySystem } from './story.js';
 import { createAIScript } from './ai.js';
 import { createActionSystem } from './actions.js';
 import { createShell, createNotifications } from './shell.js';
-import { createInitialState, formatDateCN, LOCATION_NAMES } from './state.js';
+import { createInitialState, formatDateTimeHUD, LOCATION_NAMES } from './state.js';
+import { cycleSpeedLevel, getSpeedConfig } from './speed.js';
 import { VERSION } from './version.js';
 
 const state = createInitialState();
@@ -16,8 +17,7 @@ const state = createInitialState();
 const els = {
   textStream: document.getElementById('text-stream'),
   dateDisplay: document.getElementById('date-display'),
-  homeDate: document.getElementById('home-date'),
-  btnPause: document.getElementById('btn-pause'),
+  btnSpeed: document.getElementById('btn-speed'),
   stability: document.getElementById('stability'),
   tension: document.getElementById('tension'),
   warSupport: document.getElementById('war-support'),
@@ -33,33 +33,49 @@ const els = {
 
 const notifications = createNotifications({
   listEl: document.getElementById('notif-list'),
-  badgeEl: document.getElementById('notif-badge'),
 });
 
 const output = createOutput(els.textStream, (text) => notifications.add(text));
 const notebook = createNotebook();
-const shell = createShell({
-  onShadeOpen: () => notifications.clearBadge(),
-});
+const shell = createShell();
+
+function updateSpeedUI() {
+  const cfg = getSpeedConfig(state.speedLevel);
+  if (!els.btnSpeed) return;
+  els.btnSpeed.textContent = state.paused ? '暂停' : cfg.label;
+  els.btnSpeed.classList.toggle('is-paused', state.paused);
+  els.btnSpeed.classList.toggle('speed-4', !state.paused && state.speedLevel === 4);
+}
 
 function updateHUD() {
-  const cn = formatDateCN(state.date);
-  const short = `${state.date.getFullYear()}/${state.date.getMonth() + 1}/${state.date.getDate()}`;
-  els.dateDisplay.textContent = short;
-  if (els.homeDate) els.homeDate.textContent = cn;
+  if (els.dateDisplay) els.dateDisplay.textContent = formatDateTimeHUD(state.date);
   els.stability.textContent = state.stability;
   els.tension.textContent = state.tension;
   els.warSupport.textContent = state.warSupport;
   els.politicalPower.textContent = state.politicalPower;
   const loc = LOCATION_NAMES[state.location] || state.location;
   els.location.textContent = loc.replace('总理府', '').replace('贝希特斯加登', '贝希特');
+  updateSpeedUI();
 }
 
 function setPaused(paused) {
   state.paused = paused;
-  els.btnPause.textContent = paused ? '继续' : '暂停';
-  els.btnPause.classList.toggle('paused', paused);
+  if (!paused) {
+    state.speedLevel = Math.max(1, state.speedLevel || 1);
+  } else {
+    state.speedLevel = 0;
+  }
+  updateSpeedUI();
   if (!paused) lastTick = performance.now();
+}
+
+function cycleSpeed() {
+  if (state.awaitingChoice) return;
+  state.speedLevel = cycleSpeedLevel(state.speedLevel);
+  const cfg = getSpeedConfig(state.speedLevel);
+  state.paused = cfg.paused;
+  updateSpeedUI();
+  if (!state.paused) lastTick = performance.now();
 }
 
 const eventUI = createEventUI({
@@ -71,7 +87,12 @@ const eventUI = createEventUI({
   output,
   notebook,
   onPause: setPaused,
-  onResume: () => setPaused(false),
+  onResume: () => {
+    state.speedLevel = Math.max(1, state.speedLevel || 1);
+    state.paused = false;
+    updateSpeedUI();
+    lastTick = performance.now();
+  },
   onChoiceComplete: () => {
     updateHUD();
     focusSystem.renderPanel();
@@ -108,36 +129,33 @@ const dayCycle = createDayCycle({
 const actions = createActionSystem({ state, output, eventUI, onHUDUpdate: updateHUD });
 
 let lastTick = performance.now();
-const MS_PER_DAY = { 1: 1200, 3: 400, 5: 120 };
 
-function tick() {
+function tickHour() {
   if (state.paused || state.awaitingChoice) return;
-  state.date.setDate(state.date.getDate() + 1);
+
+  state.date.setHours(state.date.getHours() + 1);
   updateHUD();
-  dayCycle.processDayEnd();
-  updateHUD();
-  focusSystem.renderPanel();
+
+  if (state.date.getHours() === 0) {
+    dayCycle.processDayEnd();
+    updateHUD();
+    focusSystem.renderPanel();
+  }
 }
 
 function gameLoop(timestamp) {
-  if (!state.paused && !state.awaitingChoice && timestamp - lastTick >= MS_PER_DAY[state.speed]) {
-    tick();
-    lastTick = timestamp;
+  if (!state.paused && !state.awaitingChoice) {
+    const cfg = getSpeedConfig(state.speedLevel);
+    const ms = cfg.msPerHour || 1200;
+    if (timestamp - lastTick >= ms) {
+      tickHour();
+      lastTick = timestamp;
+    }
   }
   requestAnimationFrame(gameLoop);
 }
 
-els.btnPause.addEventListener('click', () => {
-  if (!state.awaitingChoice) setPaused(!state.paused);
-});
-
-document.querySelectorAll('.speed-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.speed-btn').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.speed = Number(btn.dataset.speed);
-  });
-});
+els.btnSpeed?.addEventListener('click', cycleSpeed);
 
 function showOpening() {
   notebook.add('diplomacy', '法国:-40 奥地利:55', '1936-01-01');
@@ -148,7 +166,6 @@ actions.bind();
 focusSystem.renderPanel();
 updateHUD();
 
-/* 启动时清空调试台，避免浏览器缓存/往返缓存残留旧叙事 */
 if (els.textStream) els.textStream.innerHTML = '';
 if (els.consoleVersion) els.consoleVersion.textContent = VERSION;
 output.append(`[SYS] 元首办公室 ${VERSION} 已就绪`, 'sys');
