@@ -147,8 +147,23 @@ notebook.bindSubMenus();
 actions.bind();
 focusSystem.renderPanel();
 updateHUD();
+
+/* 启动时清空调试台，避免浏览器缓存/往返缓存残留旧叙事 */
+if (els.textStream) els.textStream.innerHTML = '';
 if (els.consoleVersion) els.consoleVersion.textContent = VERSION;
 output.append(`[SYS] 元首办公室 ${VERSION} 已就绪`, 'sys');
+
+shell.showHome();
+
+window.addEventListener('pageshow', (e) => {
+  if (!e.persisted) return;
+  shell.showHome();
+  if (els.textStream) {
+    els.textStream.innerHTML = '';
+    output.append(`[SYS] 元首办公室 ${VERSION} 已就绪`, 'sys');
+  }
+});
+
 showOpening();
 focusSystem.showStarterChoice();
 requestAnimationFrame(gameLoop);

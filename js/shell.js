@@ -300,6 +300,7 @@ export function createShell({ onShadeOpen } = {}) {
   });
 
   setHomePage(0);
+  showHome();
 
   return { showHome, openApp, navigateBack, openShade, closeShade, closeAllSubs };
 }

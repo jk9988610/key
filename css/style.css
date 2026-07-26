@@ -265,7 +265,7 @@ html, body {
 
 /* ── 上半屏：应用区 ── */
 #main-screen {
-  flex: 1.1;
+  flex: 7;
   min-height: 0;
   position: relative;
   overflow: hidden;
@@ -547,13 +547,15 @@ html, body {
   inset: 0;
   background: var(--phone-bg);
   z-index: 15;
-  display: none;
+  display: none !important;
   flex-direction: column;
   overflow: hidden;
+  pointer-events: none;
 }
 
 .sub-screen.sub-open {
-  display: flex;
+  display: flex !important;
+  pointer-events: auto;
 }
 
 .sub-screen .app-header {
@@ -701,8 +703,9 @@ html, body {
 
 /* ── 下半屏：信息流 ── */
 #info-panel {
-  flex: 0.9;
+  flex: 3;
   min-height: 0;
+  max-height: 32dvh;
   display: flex;
   flex-direction: column;
   background: #0d0d0f;
