@@ -47,13 +47,12 @@ html, body {
   overflow: hidden;
 }
 
-/* ── 状态栏 ── */
+/* ── 状态栏（下拉展开通知） ── */
 #status-bar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   height: calc(var(--status-h) + var(--safe-top));
-  padding: var(--safe-top) 10px 0;
+  padding: var(--safe-top) 8px 0;
   background: rgba(18, 18, 20, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -61,24 +60,71 @@ html, body {
   flex-shrink: 0;
   z-index: 50;
   font-size: 11px;
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+#status-bar:active { cursor: grabbing; }
+
+.status-pull-hint {
+  width: 28px;
+  height: 3px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+  margin: 2px auto 4px;
+  flex-shrink: 0;
+}
+
+.status-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  height: calc(var(--status-h) - 8px);
+  width: 100%;
+  padding: 0 4px;
+}
+
+.status-btn {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 11px;
+  padding: 4px 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  touch-action: manipulation;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.status-btn:active { opacity: 0.7; }
+#btn-pause.paused { color: var(--yellow); }
+
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.status-center {
+  font-weight: 600;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .status-left, .status-right {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex: 1;
-}
-
-.status-right { justify-content: flex-end; }
-
-.status-center {
-  flex: 0 1 auto;
-  font-weight: 600;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  text-align: center;
 }
 
 .status-icon-btn {
@@ -94,7 +140,6 @@ html, body {
 }
 
 .status-icon-btn.active { color: var(--green); }
-#btn-pause.paused { color: var(--yellow); }
 
 .status-chip {
   display: inline-flex;
@@ -114,23 +159,16 @@ html, body {
 .status-chip.war { color: var(--orange); }
 .status-chip.pp { color: var(--blue); }
 
-.notif-btn { position: relative; font-size: 14px; padding: 2px 6px; }
-
-.notif-badge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
-  border-radius: 7px;
+.notif-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
   background: var(--red);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 14px;
-  text-align: center;
+  flex-shrink: 0;
+  cursor: pointer;
 }
+
+.notif-dot[hidden] { display: none !important; }
 
 /* ── 通知下拉栏 ── */
 #shade-backdrop {
@@ -234,6 +272,18 @@ html, body {
   background: linear-gradient(180deg, #1a1a2e 0%, var(--phone-bg) 100%);
 }
 
+.edge-swipe-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  z-index: 25;
+  touch-action: pan-y;
+}
+
+#edge-swipe-left { left: 0; }
+#edge-swipe-right { right: 0; }
+
 .app-screen {
   position: absolute;
   inset: 0;
@@ -242,27 +292,118 @@ html, body {
   overflow: hidden;
 }
 
+.app-screen[hidden] { display: none !important; }
+
 /* 主屏幕 */
 .home-screen {
-  padding: 16px 20px;
+  padding: 12px 16px 56px;
+  display: flex;
+  flex-direction: column;
 }
 
 .home-clock {
   text-align: center;
-  padding: 20px 0 28px;
+  padding: 12px 0 16px;
 }
 
 .home-clock time {
   display: block;
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 300;
   letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
 }
 
 .home-sub {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-dim);
   margin-top: 4px;
+}
+
+.home-pager-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.home-pages {
+  display: flex;
+  width: 100%;
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  flex: 1;
+  min-height: 0;
+}
+
+.home-page {
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.home-page-tools {
+  padding: 8px 4px 0;
+}
+
+.page-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text-dim);
+}
+
+.tools-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tool-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tool-btn.active {
+  background: var(--green);
+  color: #000;
+  font-weight: 600;
+}
+
+.page-hint {
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.page-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0 4px;
+}
+
+.page-dots .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  cursor: pointer;
+}
+
+.page-dots .dot.active {
+  background: var(--text);
+  transform: scale(1.2);
 }
 
 .app-grid {
@@ -316,15 +457,15 @@ html, body {
   bottom: 12px;
   left: 16px;
   right: 16px;
-}
-
-.dock-preview {
   background: rgba(255,255,255,0.08);
   backdrop-filter: blur(10px);
   border-radius: 14px;
   padding: 10px 14px;
   font-size: 12px;
   color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 应用内页 */
@@ -405,25 +546,103 @@ html, body {
   position: absolute;
   inset: 0;
   background: var(--phone-bg);
-  z-index: 5;
-  display: flex;
+  z-index: 15;
+  display: none;
   flex-direction: column;
-  padding: 12px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-.sub-screen h2 {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 8px 0 16px;
-  text-align: center;
+.sub-screen.sub-open {
+  display: flex;
+}
+
+.sub-screen .app-header {
+  flex-shrink: 0;
 }
 
 .sub-content {
   flex: 1;
+  overflow-y: auto;
+  padding: 12px;
   font-size: 13px;
   color: var(--text-dim);
-  line-height: 1.5;
+  line-height: 1.55;
+  -webkit-overflow-scrolling: touch;
+}
+
+.notebook-entry {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.notebook-empty {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 24px;
+}
+
+/* 手机区弹窗 */
+.phone-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.phone-modal[hidden] { display: none !important; }
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+}
+
+.modal-card {
+  position: relative;
+  width: 100%;
+  max-height: 85%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-narrative {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.modal-narrative[hidden],
+.modal-narrative:empty { display: none; }
+
+.modal-narrative p { margin-bottom: 8px; }
+
+.modal-prompt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--yellow);
+  margin-bottom: 12px;
+}
+
+.modal-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-choices .choice-btn,
+.modal-choices button {
+  width: 100%;
+  text-align: left;
 }
 
 .app-menu-list {
@@ -516,14 +735,6 @@ html, body {
   font-size: 12px;
 }
 
-#text-stream .narrative {
-  font-family: var(--font-serif);
-  font-size: 14px;
-  line-height: 1.55;
-  margin-bottom: 10px;
-  color: var(--text);
-}
-
 #text-stream .brief { color: var(--blue); margin-bottom: 4px; }
 #text-stream .sys  { color: var(--green); margin-bottom: 3px; }
 #text-stream .dip  { color: var(--blue); margin-bottom: 3px; }
@@ -531,18 +742,7 @@ html, body {
 #text-stream .evt  { color: var(--red); margin-bottom: 3px; }
 #text-stream p { margin-bottom: 0.25rem; }
 
-#event-prompt {
-  flex-shrink: 0;
-  padding: 10px 14px calc(10px + var(--safe-bottom));
-  background: var(--surface);
-  border-top: 2px solid var(--yellow);
-}
-
-#event-text { font-size: 13px; color: var(--yellow); margin-bottom: 8px; }
-
-#event-choices { display: flex; flex-wrap: wrap; gap: 6px; }
-
-.choice-btn, #event-choices button {
+.choice-btn, #event-choices button, .modal-choices button {
   background: var(--surface-2);
   border: none;
   border-radius: 8px;
@@ -554,7 +754,7 @@ html, body {
   touch-action: manipulation;
 }
 
-.choice-btn:active, #event-choices button:active {
+.choice-btn:active, #event-choices button:active, .modal-choices button:active {
   background: var(--green);
   color: #000;
 }

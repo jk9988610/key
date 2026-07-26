@@ -45,7 +45,7 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
     state.focusActive = id;
     state.focusProgress = 0;
     if (!silent) {
-      output.appendNarrative([`「${def.name}」——我拍板。`, def.desc]);
+      output.append(`[FOC] 启动：${def.name}（${def.days}日）`, 'foc');
       notebook.add('focus', `进行中: ${def.name}`, formatDateISO(state.date));
     }
     onHUDUpdate?.();
@@ -84,7 +84,7 @@ export function createFocusSystem({ state, output, notebook, onMapUpdate, onHUDU
       applyEffects(state, def.effects || {}, { flags: def.flags });
     }
 
-    output.appendNarrative(def.completeNarrative || [`「${def.name}」完成了。`]);
+    output.append(`[FOC] 完成：${def.name}`, 'foc');
     if (def.notebook) notebook.add('focus', def.notebook, formatDateISO(state.date));
 
     if (def.storyOnComplete) {

@@ -49,7 +49,7 @@ export function createActionSystem({ state, output, eventUI, onHUDUpdate }) {
 
     const pool = filterByConditions(dailyEvents.audiences, state);
     if (!pool.length) {
-      output.append('[简报] 今日无人候见。', 'brief');
+      output.append('[SYS] 今日无人候见', 'sys');
       return;
     }
 
@@ -84,7 +84,6 @@ export function createActionSystem({ state, output, eventUI, onHUDUpdate }) {
         onSelect: () => {
           state.politicalPower -= DIPLOMACY_COST;
           applyEffects(state, a.effects);
-          output.appendNarrative([a.narrative]);
           output.append(`[DIP] ${a.label}`, 'dip');
           onHUDUpdate?.();
         },

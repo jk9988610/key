@@ -1,20 +1,37 @@
 import { applyEffects } from './effects.js';
 import { formatDateISO } from './state.js';
+import { renderModalNarrative } from './consoleOutput.js';
 
-export function createEventUI({ promptEl, textEl, choicesEl, output, notebook, onPause, onResume, onChoiceComplete }) {
+export function createEventUI({
+  modalEl,
+  modalNarrative,
+  promptEl,
+  textEl,
+  choicesEl,
+  output,
+  notebook,
+  onPause,
+  onResume,
+  onChoiceComplete,
+}) {
+  function showModal(show) {
+    if (modalEl) modalEl.hidden = !show;
+  }
+
   function showChoiceEvent(eventDef, state) {
     state.wasRunningBeforeEvent = !state.paused;
     state.awaitingChoice = true;
     onPause?.(true);
 
-    output.appendNarrative(eventDef.narrative || []);
+    renderModalNarrative(modalNarrative, eventDef.narrative || []);
+    showModal(true);
 
     if (eventDef.character) {
-      output.append(`[简报] ${eventDef.character}求见`, 'brief');
+      textEl.textContent = `${eventDef.character}求见`;
+    } else {
+      textEl.textContent = eventDef.promptText || '请做出决定';
     }
 
-    promptEl.hidden = false;
-    textEl.textContent = eventDef.promptText || '请做出决定：';
     choicesEl.innerHTML = '';
 
     (eventDef.choices || []).forEach((choice) => {
@@ -32,22 +49,18 @@ export function createEventUI({ promptEl, textEl, choicesEl, output, notebook, o
             notebook: choice.notebook,
           });
 
-          if (logs.length) {
-            output.append(`[SYS] ${logs.join(' | ')}`, 'sys');
-          }
-          if (nb) {
-            notebook.add(nb.type, nb.text, formatDateISO(state.date));
-          }
+        if (logs.length) {
+          output.append(`[SYS] ${logs.join(' | ')}`, 'sys');
+        }
+          if (nb) notebook.add(nb.type, nb.text, formatDateISO(state.date));
         }
 
-        promptEl.hidden = true;
+        showModal(false);
+        modalNarrative.innerHTML = '';
         state.awaitingChoice = false;
         onChoiceComplete?.();
 
-        // 事件前若在运行，选择后自动恢复
-        if (state.wasRunningBeforeEvent) {
-          onResume?.();
-        }
+        if (state.wasRunningBeforeEvent) onResume?.();
       });
       choicesEl.appendChild(btn);
     });
@@ -57,18 +70,8 @@ export function createEventUI({ promptEl, textEl, choicesEl, output, notebook, o
 }
 
 export function applyPassiveEvent(eventDef, state, output, notebook) {
-  if (eventDef.text) {
-    output.append(eventDef.text, 'narrative');
-  }
-  if (eventDef.narrative && typeof eventDef.narrative === 'string') {
-    output.append(eventDef.narrative, 'brief');
-  }
-  if (eventDef.sys) {
-    output.append(`[SYS] ${eventDef.sys}`, 'sys');
-  }
-
   const { logs, notebook: nb } = applyEffects(state, eventDef.effects || {});
-  if (logs.length) output.append(`[SYS] ${logs.join(' | ')}`, 'sys');
   if (eventDef.notebook) notebook.add(eventDef.notebook.type, eventDef.notebook.text, formatDateISO(state.date));
   if (nb) notebook.add(nb.type, nb.text, formatDateISO(state.date));
+  logs.forEach((line) => output.append(`[SYS] ${line}`, 'sys'));
 }

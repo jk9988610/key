@@ -3,7 +3,7 @@ import { applyEffects } from './effects.js';
 import { formatDateISO } from './state.js';
 import storyData from './data/story_events.js';
 
-export function createStorySystem({ state, output, notebook, eventUI, onMapUpdate, onHUDUpdate }) {
+export function createStorySystem({ state, output, notebook, eventUI, onHUDUpdate }) {
   const fired = new Set();
 
   function tryTrigger(id) {
@@ -13,17 +13,14 @@ export function createStorySystem({ state, output, notebook, eventUI, onMapUpdat
     fired.add(id);
 
     if (def.choices?.length === 1 && !def.critical) {
-      const c = def.choices[0];
-      output.appendNarrative(def.narrative || []);
-      applyEffects(state, c.effects || {}, { flags: c.flags });
+      applyEffects(state, def.choices[0].effects || {}, { flags: def.choices[0].flags });
       onHUDUpdate?.();
-      onMapUpdate?.();
       return true;
     }
 
     eventUI.showChoiceEvent({
       narrative: def.narrative,
-      promptText: def.critical ? '重大事件：' : undefined,
+      promptText: def.critical ? '重大事件' : undefined,
       choices: (def.choices || []).map((c) => ({
         text: c.text,
         effects: c.effects || {},

@@ -22,7 +22,9 @@ const els = {
   warSupport: document.getElementById('war-support'),
   politicalPower: document.getElementById('political-power'),
   location: document.getElementById('location'),
-  eventPrompt: document.getElementById('event-prompt'),
+  phoneModal: document.getElementById('phone-modal'),
+  modalNarrative: document.getElementById('modal-narrative'),
+  eventPrompt: document.getElementById('event-text'),
   eventText: document.getElementById('event-text'),
   eventChoices: document.getElementById('event-choices'),
 };
@@ -32,13 +34,15 @@ const notifications = createNotifications({
   badgeEl: document.getElementById('notif-badge'),
 });
 
-const output = createOutput(els.textStream, (text, type) => notifications.add(text, type));
+const output = createOutput(els.textStream, (text) => notifications.add(text));
 const notebook = createNotebook();
-const shell = createShell();
+const shell = createShell({
+  onShadeOpen: () => notifications.clearBadge(),
+});
 
 function updateHUD() {
   const cn = formatDateCN(state.date);
-  const short = cn.replace('年', '/').replace('月', '/').replace('日', '');
+  const short = `${state.date.getFullYear()}/${state.date.getMonth() + 1}/${state.date.getDate()}`;
   els.dateDisplay.textContent = short;
   if (els.homeDate) els.homeDate.textContent = cn;
   els.stability.textContent = state.stability;
@@ -51,13 +55,14 @@ function updateHUD() {
 
 function setPaused(paused) {
   state.paused = paused;
-  els.btnPause.textContent = paused ? '▶' : '⏸';
+  els.btnPause.textContent = paused ? '继续' : '暂停';
   els.btnPause.classList.toggle('paused', paused);
-  els.btnPause.title = paused ? '继续' : '暂停';
   if (!paused) lastTick = performance.now();
 }
 
 const eventUI = createEventUI({
+  modalEl: els.phoneModal,
+  modalNarrative: els.modalNarrative,
   promptEl: els.eventPrompt,
   textEl: els.eventText,
   choicesEl: els.eventChoices,
@@ -96,7 +101,6 @@ const dayCycle = createDayCycle({
   output,
   focusSystem,
   aiScript,
-  storySystem,
 });
 
 const actions = createActionSystem({ state, output, eventUI, onHUDUpdate: updateHUD });
@@ -134,11 +138,6 @@ document.querySelectorAll('.speed-btn').forEach((btn) => {
 });
 
 function showOpening() {
-  output.appendNarrative([
-    '我醒来时，窗外柏林的天空是铅灰色的。',
-    '新年。1936年。帝国在等我做出选择。',
-  ]);
-  output.append('[SYS] 点击上方应用操作；讯息在下方滚动', 'sys');
   notebook.add('diplomacy', '法国:-40 奥地利:55', '1936-01-01');
 }
 
